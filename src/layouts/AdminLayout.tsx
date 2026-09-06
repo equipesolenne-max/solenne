@@ -60,7 +60,7 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-[#FDFCF9] text-midnight flex overflow-hidden">
       {/* Sidebar for Desktop */}
       <aside className="hidden w-[260px] shrink-0 border-r border-line bg-midnight text-ivory lg:flex lg:flex-col">
-        <SidebarContent navSections={navSections} user={user} logout={logout} />
+        <SidebarContent navSections={navSections} logout={logout} />
       </aside>
 
       {/* Sidebar for Mobile (Drawer) */}
@@ -83,7 +83,7 @@ export default function AdminLayout() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-2">
-              <SidebarContent navSections={navSections} user={user} logout={logout} onItemClick={closeSidebar} />
+              <SidebarContent navSections={navSections} logout={logout} onItemClick={closeSidebar} />
             </div>
           </div>
         </aside>
@@ -151,12 +151,10 @@ export default function AdminLayout() {
 
 function SidebarContent({
   navSections,
-  user,
   logout,
   onItemClick
 }: {
   navSections: NavSection[];
-  user: any;
   logout: () => void;
   onItemClick?: () => void;
 }) {

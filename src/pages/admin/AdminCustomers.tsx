@@ -4,7 +4,7 @@ import type { CustomerRecord } from "../../types/admin";
 
 export default function AdminCustomers() {
   const [query, setQuery] = useState("");
-  const { data: customers, loading, error } = useAdminCollection<CustomerRecord>("users");
+  const { data: customers, loading } = useAdminCollection<CustomerRecord>("users");
 
   const filteredCustomers = useMemo(() => {
     if (!query) return customers;

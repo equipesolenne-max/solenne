@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { getDashboard, getSettings, listAdmin, listContactMessages } from "../../api/admin";
-import type { CustomerRecord, OrderRecord, ProductRecord, StoreSettings } from "../../types/admin";
+import type { OrderRecord, ProductRecord, StoreSettings } from "../../types/admin";
 import type { ContactMessage } from "../../types/communication";
 import { defaultSettings } from "../../data/adminMockData";
 import { useAdminStats } from "../../contexts/AdminStatsProvider";
@@ -16,8 +16,6 @@ export default function AdminDashboard() {
   const [inquiries, setInquiries] = useState<ContactMessage[]>([]);
   const [metrics, setMetrics] = useState<Record<string, number> | null>(null);
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const { pendingOrders, unreadInquiries, lowStockProducts: lowStockCount } = useAdminStats();
 
@@ -34,8 +32,7 @@ export default function AdminDashboard() {
       setProducts(nextProducts);
       setInquiries(nextInquiries);
       if (nextSettings && Object.keys(nextSettings).length > 0) setSettings(nextSettings);
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load dashboard."))
-      .finally(() => setLoading(false));
+    });
   }, []);
 
   const [now] = useState(() => Date.now());

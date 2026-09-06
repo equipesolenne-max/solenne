@@ -25,13 +25,14 @@ export interface ContactMessage {
   created_at: string;
   updated_at: string;
   is_read: boolean;
+  replies?: MessageReply[];
 }
 
 export interface MessageReply {
   id: string;
-  messageId: string;
-  senderId: string;
-  senderName: string;
+  message: string;
+  sender: string;
+  sender_name: string;
   text: string;
   created_at: string;
   is_admin: boolean;

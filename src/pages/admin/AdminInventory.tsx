@@ -8,7 +8,7 @@ import { defaultSettings } from "../../data/adminMockData";
 
 export default function AdminInventory() {
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
-  const { data: initialProducts, loading, error } = useAdminCollection<ProductRecord>("products");
+  const { data: initialProducts, loading } = useAdminCollection<ProductRecord>("products");
   const [query, setQuery] = useState("");
   const [localProducts, setLocalProducts] = useState<ProductRecord[]>([]);
 

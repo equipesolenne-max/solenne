@@ -14,7 +14,7 @@ export default function AdminOrders() {
   const [settings, setSettings] = useState<StoreSettings>(defaultSettings);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const { data: allOrders, loading, error, refresh } = useAdminCollection<OrderRecord>("orders");
+  const { data: allOrders, loading, refresh } = useAdminCollection<OrderRecord>("orders");
 
   const orders = useMemo(() => {
     let filtered = filter === "all" ? allOrders : allOrders.filter((order) => order.status === filter);
