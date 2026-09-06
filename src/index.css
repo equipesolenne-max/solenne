@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --line: rgba(27, 42, 70, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #F8F4EC;
+  color: #1B2A46;
+  font-family: 'Jost', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.eyebrow {
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #C6A369;
+  font-weight: 500;
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.section-label .rule {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+button, a {
+  cursor: pointer;
+}
+
+::selection {
+  background: #C6A369;
+  color: #F8F4EC;
+}

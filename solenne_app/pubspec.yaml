@@ -1,0 +1,71 @@
+name: solenne
+description: "SOLENNE — Quiet luxury for the modern hijab wardrobe."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Brand fonts (Marcellus, Cormorant Garamond, Jost) without bundling raw .ttf files.
+  # Swap for local assets in theme/solenne_typography.dart if fully-offline fonts are required.
+  google_fonts: ^6.2.1
+
+  # Vector brand marks (icon.svg, monogram.svg)
+  flutter_svg: ^2.0.10+1
+
+  # Thin line icon set matching the logo's stroke weight
+  lucide_icons: ^0.257.0
+
+  # State management
+  provider: ^6.1.2
+
+  # Networking
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+
+  # Backend — Django REST API integration
+  firebase_core: ^3.6.0
+  # firebase_auth, cloud_firestore, and firebase_storage removed in favor of Django
+
+  cupertino_icons: ^1.0.8
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brand/
+    - assets/collection.png
+
+  # If you later bundle real font files instead of google_fonts, declare them here:
+  # fonts:
+  #   - family: Marcellus
+  #     fonts:
+  #       - asset: assets/fonts/Marcellus-Regular.ttf
+  #   - family: CormorantGaramond
+  #     fonts:
+  #       - asset: assets/fonts/CormorantGaramond-Light.ttf
+  #         weight: 300
+  #       - asset: assets/fonts/CormorantGaramond-Regular.ttf
+  #         weight: 400
+  #       - asset: assets/fonts/CormorantGaramond-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/CormorantGaramond-Italic.ttf
+  #         style: italic
+  #   - family: Jost
+  #     fonts:
+  #       - asset: assets/fonts/Jost-Light.ttf
+  #         weight: 300
+  #       - asset: assets/fonts/Jost-Regular.ttf
+  #         weight: 400
+  #       - asset: assets/fonts/Jost-Medium.ttf
+  #         weight: 500

@@ -1,0 +1,85 @@
+# ============================================================
+# Logs
+# ============================================================
+
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ============================================================
+# Node / Frontend
+# ============================================================
+
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+
+# ============================================================
+# Editor directories and files
+# ============================================================
+
+.vscode/*
+!.vscode/extensions.json
+
+.idea/
+.DS_Store
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+
+# ============================================================
+# Django / Python
+# ============================================================
+
+# SQLite local database
+backend/db.sqlite3
+
+# Environment variables / secrets
+backend/.env
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+backend/**/__pycache__/
+
+# Virtual environments
+venv/
+.venv/
+env/
+backend/venv/
+backend/.venv/
+backend/env/
+
+
+# ============================================================
+# Django generated files
+# ============================================================
+
+# Collected static files
+backend/staticfiles/
+
+# User-uploaded media
+backend/media/
+
+
+# ============================================================
+# Build / temporary files
+# ============================================================
+
+*.tmp
+*.temp

@@ -1,0 +1,5 @@
+import ContentPage from "./ContentPage";
+export function About() { return <ContentPage eyebrow="The House" title="About Solenne"><p>Solenne makes considered modest pieces for everyday movement. Each collection is developed in small batches with attention to drape, weight, and longevity.</p></ContentPage>; }
+export function ShippingReturns() { return <ContentPage eyebrow="Policies" title="Shipping & Returns"><p>Orders ship within 2–4 business days. Returns are accepted within seven days of delivery for unworn items in their original condition. Contact the store before sending anything back.</p></ContentPage>; }
+export function Privacy() { return <ContentPage eyebrow="Legal" title="Privacy Policy"><p>We use the information you provide to manage your account, process orders, and respond to messages. We do not sell personal information.</p></ContentPage>; }
+export function Terms() { return <ContentPage eyebrow="Legal" title="Terms & Conditions"><p>By using Solenne, you agree to provide accurate order details and to use the store lawfully. Prices and availability may change as collections evolve.</p></ContentPage>; }

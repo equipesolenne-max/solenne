@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Admin check
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read']);
+      allow create, delete: if isAdmin();
+    }
+
+    // Contact Messages
+    match /contactMessages/{messageId} {
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if true; // Public can send inquiries
+      allow update: if isAdmin();
+
+      match /replies/{replyId} {
+        allow read: if request.auth != null && (get(/databases/$(database)/documents/contactMessages/$(messageId)).data.userId == request.auth.uid || isAdmin());
+        allow create: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/contactMessages/$(messageId)).data.userId == request.auth.uid);
+      }
+    }
+
+    // Preserve existing rules...
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
