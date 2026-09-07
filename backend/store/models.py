@@ -1,6 +1,20 @@
-from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.models import UserManager
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+import uuid
+
+
+class Media(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, blank=True)
+    content = models.BinaryField()
+    content_type = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Media"
+
+    def __str__(self):
+        return f"{self.name or self.id} ({self.content_type})"
 
 
 class EmailUserManager(UserManager):
@@ -31,22 +45,31 @@ class Category(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to="categories/", blank=True, null=True)
+    media = models.ForeignKey(Media, null=True, blank=True, on_delete=models.SET_NULL, related_name="categories")
     active = models.BooleanField(default=True)
     legacy_id = models.CharField(max_length=128, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Categories"
+
+    def __str__(self):
+        return self.name
 
 
 class Collection(models.Model):
     name = models.CharField(max_length=160)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to="collections/", blank=True, null=True)
+    media = models.ForeignKey(Media, null=True, blank=True, on_delete=models.SET_NULL, related_name="collections")
     active = models.BooleanField(default=True)
     legacy_id = models.CharField(max_length=128, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Product(models.Model):
@@ -63,33 +86,42 @@ class Product(models.Model):
     bestseller = models.BooleanField(default=False)
     is_new = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
-    images = models.JSONField(default=list, blank=True)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="products")
     collection = models.ForeignKey(Collection, null=True, blank=True, on_delete=models.SET_NULL, related_name="products")
     legacy_id = models.CharField(max_length=128, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")
     name = models.CharField(max_length=100)
     hex = models.CharField(max_length=7, default="#C6A369")
-    images = models.JSONField(default=list, blank=True)
     stock = models.PositiveIntegerField(default=0)
     sku = models.CharField(max_length=100, blank=True)
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=["product", "name"], name="unique_product_variant")]
 
+    def __str__(self):
+        return f"{self.product.name} - {self.name}"
 
-class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="media_images")
-    variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.CASCADE, related_name="media_images")
-    image = models.ImageField(upload_to="products/%Y/%m/")
+
+class ProductMedia(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="product_media")
+    variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.CASCADE, related_name="product_media")
+    media = models.ForeignKey(Media, on_delete=models.CASCADE, related_name="product_media")
     is_primary = models.BooleanField(default=False)
     position = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+        verbose_name_plural = "Product Media"
 
 
 class Address(models.Model):
@@ -116,6 +148,7 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=["cart", "product", "variant"], name="unique_cart_line")]
 
@@ -184,8 +217,8 @@ class ContactMessage(models.Model):
     subject = models.CharField(max_length=200, blank=True)
     message = models.TextField(max_length=2000)
     status = models.CharField(max_length=20, default="new")
-    is_read = models.BooleanField(default=False) # For Admin
-    is_read_by_user = models.BooleanField(default=True) # For Customer
+    is_read = models.BooleanField(default=False)
+    is_read_by_user = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../models/product.dart';
+import '../../core/utils/url_utils.dart';
 import 'package:intl/intl.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -214,7 +215,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             itemBuilder: (context, index) {
               return Container(
                 color: SolenneColors.ivoryWarm,
-                child: Image.network(
+                child: UrlUtils.buildImage(
                   images[index],
                   fit: BoxFit.cover,
                 ),

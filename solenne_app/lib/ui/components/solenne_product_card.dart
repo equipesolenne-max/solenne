@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/solenne_theme.dart';
-import '../../models/product_model.dart';
+import '../../core/utils/url_utils.dart';
 import 'solenne_price.dart';
 
 /// Image-first product card on an ivory/neutral ground — no colored rounded
@@ -38,7 +38,7 @@ class SolenneProductCard extends StatelessWidget {
                       border: Border.all(color: SolenneColors.line),
                     ),
                     child: product.images.isNotEmpty
-                        ? Image.network(product.images.first, fit: BoxFit.cover)
+                        ? UrlUtils.buildImage(product.images.first, fit: BoxFit.cover)
                         : const Icon(LucideIcons.image, color: SolenneColors.muted),
                   ),
                 ),

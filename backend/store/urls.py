@@ -1,6 +1,6 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from .views import AddressViewSet, CartItemView, CartView, CategoryViewSet, CollectionViewSet, MyContactMessageViewSet, NotificationViewSet, OrderViewSet, ProductViewSet, WishlistView, contact_view, newsletter_view
+from .views import AddressViewSet, CartItemView, CartView, CategoryViewSet, CollectionViewSet, MediaView, MyContactMessageViewSet, NotificationViewSet, OrderViewSet, ProductViewSet, WishlistView, contact_view, newsletter_view
 
 router = DefaultRouter()
 router.register("products", ProductViewSet, basename="product")
@@ -13,6 +13,7 @@ router.register("contact-messages", MyContactMessageViewSet, basename="my-contac
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("media/<uuid:pk>/", MediaView.as_view(), name="media"),
     path("cart/", CartView.as_view()),
     path("cart/items/", CartItemView.as_view()),
     path("wishlist/", WishlistView.as_view()),

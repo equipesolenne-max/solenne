@@ -143,7 +143,7 @@ USE_TZ = True
 
 
 # ============================================================
-# STATIC / MEDIA FILES
+# STATIC FILES
 # ============================================================
 
 STATIC_URL = "/static/"
@@ -152,14 +152,10 @@ STATIC_URL = "/static/"
 # python manage.py collectstatic
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# User-uploaded files
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
 # Django 5.x storage configuration
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": "django.core.files.storage.InMemoryStorage",
     },
     "staticfiles": {
         "BACKEND": (

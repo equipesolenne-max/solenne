@@ -78,6 +78,10 @@ export default function AdminProductForm() {
   }
 
   async function handleVariantImages(event: React.ChangeEvent<HTMLInputElement>, index: number) {
+    if (!productId) {
+      alert("Please save the product first before uploading variant images.");
+      return;
+    }
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
 
@@ -86,27 +90,16 @@ export default function AdminProductForm() {
       const variant = form.variants?.[index];
       if (!variant) return;
 
-      if (productId) {
-        const results = await Promise.all(
-          files.map((file) => {
-            const form = new FormData();
-            form.append("image", file);
-            form.append("variant_id", variant.id || variant.name);
-            return api.post(`/admin/products/${productId}/images/`, form);
-          })
-        );
-        const newImageUrls = results.map((res: any) => res.image);
-        updateVariant(index, { media_images: [...(variant.media_images ?? []), ...newImageUrls] });
-      } else {
-        const base64Results = await Promise.all(
-          files.map((file) => new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          }))
-        );
-        updateVariant(index, { images: [...(variant.images ?? []), ...base64Results] });
-      }
+      const results = await Promise.all(
+        files.map((file) => {
+          const form = new FormData();
+          form.append("image", file);
+          form.append("variant_id", variant.id || variant.name);
+          return api.post(`/admin/products/${productId}/images/`, form);
+        })
+      );
+      const newImageUrls = results.map((res: any) => res.url);
+      updateVariant(index, { images: [...(variant.images ?? []), ...newImageUrls] });
     } catch (reason) {
       setError(readableApiError(reason, "Unable to upload variant images."));
     } finally {
@@ -121,54 +114,60 @@ export default function AdminProductForm() {
 
     const nextProduct: ProductRecord = {
       ...form,
-      id: form.id || `product-${Date.now()}`,
+      id: form.id,
       slug: form.slug || form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
       created_at: form.created_at || new Date().toISOString().slice(0, 10),
-      images: form.images.length > 0 ? form.images : ["https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne"],
     };
-    if (nextProduct.variants?.length) {
-      nextProduct.colors = nextProduct.variants.map((variant) => variant.name);
-      nextProduct.stock = nextProduct.variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0);
-      nextProduct.images = nextProduct.variants.flatMap((variant) => variant.images).length > 0
-        ? nextProduct.variants.flatMap((variant) => variant.images)
-        : nextProduct.images;
-    }
+
+    // Cleanup images field (no longer used for storage, only for UI fallback if needed, but backend ignores it)
+    delete (nextProduct as any).images;
 
     try {
-      if (productId) await updateAdmin("products", nextProduct.id, nextProduct);
-      else await createAdmin("products", nextProduct);
+      let savedProduct: ProductRecord;
+      if (productId) {
+        savedProduct = await updateAdmin("products", nextProduct.id, nextProduct);
+      } else {
+        savedProduct = await createAdmin("products", nextProduct);
+      }
       invalidateCatalogCache();
-      navigate("/admin/products");
+      if (!productId) {
+          navigate(`/admin/products/${savedProduct.id}/edit`);
+      } else {
+          navigate("/admin/products");
+      }
     } catch (reason) {
       setError(readableApiError(reason, "Unable to save the product."));
     } finally { setUploading(false); }
   }
 
   async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!productId) {
+      alert("Please save the product first before uploading images.");
+      return;
+    }
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
 
     setUploading(true);
     try {
-      // Option 1: Standard Multipart Upload (to Django)
-      if (productId) {
-        const results = await Promise.all(files.map((file) => uploadProductImage(productId, file)));
-        const newImageUrls = results.map((res: any) => res.image);
-        setForm((current) => ({ ...current, images: [...current.images, ...newImageUrls] }));
-      } else {
-        // Option 2: Local Base64 conversion (for new products or bypass)
-        const base64Results = await Promise.all(
-          files.map((file) => new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          }))
-        );
-        setForm((current) => ({ ...current, images: [...current.images, ...base64Results] }));
-      }
+      const results = await Promise.all(files.map((file) => uploadProductImage(productId, file)));
+      const newImageUrls = results.map((res: any) => res.url);
+      setForm((current) => ({ ...current, images: [...current.images, ...newImageUrls] }));
     } catch (reason) {
       setError(readableApiError(reason, "Unable to upload product images."));
     } finally { setUploading(false); }
+  }
+
+  async function deleteProductImage(pmId: string) {
+      if (!productId) return;
+      try {
+          await api.delete(`/admin/products/${productId}/images/${pmId}/`);
+          // Refresh form data
+          const product = await getAdmin<ProductRecord>("products", productId);
+          if (product) setForm({ ...product, variants: product.variants?.length ? product.variants : product.colors.map((name) => ({ name, hex: "#C6A369", images: product.images, stock: product.stock })) });
+      } catch (err) {
+          setError("Failed to delete image.");
+      }
   }
 
   return (
@@ -185,6 +184,8 @@ export default function AdminProductForm() {
 
       <form onSubmit={handleSubmit} className="space-y-6 rounded-[28px] border border-[#1B2A46]/10 bg-[#F8F4EC] p-5">
         {error && <div role="alert" className="border border-red-900/20 bg-red-50 p-4 text-sm text-red-900">{error}</div>}
+        {!productId && <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800">You will be able to upload images after creating the product.</div>}
+
         <div className="grid gap-6 md:grid-cols-2">
           <div>
             <label className="mb-2 block font-sans text-[11px] tracking-[0.18em] uppercase text-[#1B2A46]/70">Product name</label>
@@ -245,7 +246,22 @@ export default function AdminProductForm() {
           <div className="md:col-span-2 rounded-2xl border border-[#1B2A46]/10 bg-[#F3EDE1] p-4">
             <div className="mb-3 flex items-center justify-between"><label className="font-sans text-[11px] tracking-[0.18em] uppercase text-[#1B2A46]/70">Color variants</label><button type="button" onClick={addVariant} className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#1B2A46] hover:text-[#C6A369]">Add color</button></div>
             <div className="space-y-4">
-              {(form.variants ?? []).map((variant, index) => <div key={`variant-${index}`} className="grid gap-3 border-t border-[#1B2A46]/10 pt-4 md:grid-cols-[1fr_100px_120px_1fr_auto] md:items-end"><label className="text-sm">Color name<input value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} required className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label><label className="text-sm">HEX<input type="color" value={variant.hex} onChange={(event) => updateVariant(index, { hex: event.target.value })} className="mt-2 h-10 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] p-1" /></label><label className="text-sm">Stock<input type="number" min="0" value={variant.stock ?? 0} onChange={(event) => updateVariant(index, { stock: Number(event.target.value) })} className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label><label className="text-sm">Images<input type="file" accept="image/*" multiple onChange={(event) => void handleVariantImages(event, index)} className="mt-2 block w-full text-xs" />{variant.images.length > 0 && <span className="mt-1 block text-xs text-[#1B2A46]/60">{variant.images.length} image(s) selected</span>}</label><button type="button" onClick={() => removeVariant(index)} disabled={(form.variants ?? []).length <= 1} className="text-xs text-red-900 disabled:opacity-30">Remove</button></div>)}
+              {(form.variants ?? []).map((variant, index) => (
+                <div key={`variant-${index}`} className="grid gap-3 border-t border-[#1B2A46]/10 pt-4 md:grid-cols-[1fr_100px_120px_1fr_auto] md:items-end">
+                    <label className="text-sm">Color name<input value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} required className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
+                    <label className="text-sm">HEX<input type="color" value={variant.hex} onChange={(event) => updateVariant(index, { hex: event.target.value })} className="mt-2 h-10 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] p-1" /></label>
+                    <label className="text-sm">Stock<input type="number" min="0" value={variant.stock ?? 0} onChange={(event) => updateVariant(index, { stock: Number(event.target.value) })} className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
+                    <label className="text-sm">Images
+                        <input type="file" accept="image/*" multiple onChange={(event) => void handleVariantImages(event, index)} disabled={!productId} className="mt-2 block w-full text-xs disabled:opacity-50" />
+                        <div className="mt-2 flex gap-2 overflow-x-auto">
+                            {variant.images.map((img, i) => (
+                                <img key={i} src={getImageUrl(img)} className="h-10 w-10 object-cover rounded border border-line" alt="" />
+                            ))}
+                        </div>
+                    </label>
+                    <button type="button" onClick={() => removeVariant(index)} disabled={(form.variants ?? []).length <= 1} className="text-xs text-red-900 disabled:opacity-30">Remove</button>
+                </div>
+              ))}
             </div>
           </div>
           <div>
@@ -273,12 +289,12 @@ export default function AdminProductForm() {
         </div>
 
         <div className="rounded-2xl border border-dashed border-[#1B2A46]/15 bg-[#F3EDE1] p-4">
-          <label className="mb-2 block font-sans text-[11px] tracking-[0.18em] uppercase text-[#1B2A46]/70">Product images (Django multipart upload)</label>
-          <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="block w-full text-sm text-[#1B2A46] file:mr-4 file:rounded file:border-0 file:bg-[#1B2A46] file:px-4 file:py-2 file:font-sans file:text-[10px] file:tracking-[0.18em] file:uppercase file:text-[#F8F4EC]" />
+          <label className="mb-2 block font-sans text-[11px] tracking-[0.18em] uppercase text-[#1B2A46]/70">Product images</label>
+          <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={!productId} className="block w-full text-sm text-[#1B2A46] file:mr-4 file:rounded file:border-0 file:bg-[#1B2A46] file:px-4 file:py-2 file:font-sans file:text-[10px] file:tracking-[0.18em] file:uppercase file:text-[#F8F4EC] disabled:opacity-50" />
           {form.images.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {form.images.map((image, index) => (
-                <img key={`${image}-${index}`} src={getImageUrl(image)} alt={`Product upload ${index + 1}`} className="h-24 w-full rounded-lg object-cover" />
+                <img key={`${image}-${index}`} src={getImageUrl(image)} alt={`Product upload ${index + 1}`} className="h-24 w-full rounded-lg object-cover border border-line" />
               ))}
             </div>
           )}

@@ -4,65 +4,102 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from .models import Category, Collection, ContactMessage, ContactMessageReply, Notification, Order, OrderStatusHistory, Product, ProductImage, ProductVariant, StoreSettings, User
-from .serializers import CategorySerializer, CollectionSerializer, ContactMessageSerializer, ContactMessageReplySerializer, NotificationSerializer, OrderSerializer, ProductImageSerializer, ProductSerializer, UserSerializer, VariantSerializer
+from .models import (
+    Category, Collection, ContactMessage, ContactMessageReply, 
+    Media, Notification, Order, OrderStatusHistory, 
+    Product, ProductMedia, ProductVariant, StoreSettings, User
+)
+from .serializers import (
+    CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
+    ContactMessageReplySerializer, NotificationSerializer, OrderSerializer, 
+    ProductMediaSerializer, ProductSerializer, UserSerializer, VariantSerializer
+)
 from .email_service import notify_order_status, send_reply_notification
 
 
 class AdminProductSerializer(ProductSerializer):
     category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all(), required=False, allow_null=True, write_only=True)
     collection_id = serializers.PrimaryKeyRelatedField(source="collection", queryset=Collection.objects.all(), required=False, allow_null=True, write_only=True)
+
     class Meta(ProductSerializer.Meta):
         fields = ProductSerializer.Meta.fields + ("category_id", "collection_id")
 
 
 class AdminProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = Product.objects.prefetch_related("variants").select_related("category", "collection")
+    queryset = Product.objects.prefetch_related("variants", "product_media").select_related("category", "collection")
     serializer_class = AdminProductSerializer
-    def perform_create(self, serializer): serializer.save()
+
     @action(detail=True, methods=["post"], url_path="stock")
     def stock(self, request, pk=None):
         product = self.get_object()
-        if "stock" in request.data: product.stock = max(0, int(request.data["stock"]))
-        product.save(update_fields=["stock"])
+        if "stock" in request.data:
+            product.stock = max(0, int(request.data["stock"]))
+            product.save(update_fields=["stock"])
         return Response(AdminProductSerializer(product).data)
+
     @action(detail=True, methods=["post"], url_path="variants")
     def variants(self, request, pk=None):
         product = self.get_object()
-        variant, _ = ProductVariant.objects.update_or_create(product=product, name=request.data["name"], defaults={"hex": request.data.get("hex", "#C6A369"), "images": request.data.get("images", []), "stock": max(0, int(request.data.get("stock", 0))), "sku": request.data.get("sku", "")})
-        return Response(VariantSerializer(variant).data, status=status.HTTP_201_CREATED)
+        variant, _ = ProductVariant.objects.update_or_create(
+            product=product, 
+            name=request.data["name"], 
+            defaults={
+                "hex": request.data.get("hex", "#C6A369"), 
+                "stock": max(0, int(request.data.get("stock", 0))), 
+                "sku": request.data.get("sku", "")
+            }
+        )
+        return Response(VariantSerializer(variant, context={"request": request}).data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=["post"], url_path="images", parser_classes=[MultiPartParser, FormParser])
     def images(self, request, pk=None):
         product = self.get_object()
         uploaded = request.FILES.get("image")
         variant_id = request.data.get("variant_id")
-        if not uploaded: return Response({"detail": "image is required."}, status=400)
-        if uploaded.content_type not in {"image/jpeg", "image/png", "image/webp"} or uploaded.size > 5 * 1024 * 1024:
-            return Response({"detail": "Unsupported image type or size."}, status=400)
         
-        # If variant_id is provided, try to find the variant
+        if not uploaded:
+            return Response({"detail": "image is required."}, status=400)
+            
+        # Create Media record
+        media = Media.objects.create(
+            name=uploaded.name,
+            content=uploaded.read(),
+            content_type=uploaded.content_type
+        )
+
+        # Handle variant association
         variant = None
         if variant_id:
             variant = product.variants.filter(id=variant_id).first()
             if not variant:
-                # Try by name if it's not a UUID
                 variant = product.variants.filter(name=variant_id).first()
 
-        image = ProductImage.objects.create(
-            product=product, 
+        pm = ProductMedia.objects.create(
+            product=product,
             variant=variant,
-            image=uploaded, 
-            is_primary=not product.media_images.exists(), 
-            position=product.media_images.count()
+            media=media,
+            is_primary=not product.product_media.filter(variant=variant).exists(),
+            position=product.product_media.filter(variant=variant).count()
         )
-        return Response(ProductImageSerializer(image, context={"request": request}).data, status=201)
-    @action(detail=True, methods=["delete"], url_path=r"images/(?P<image_id>[^/.]+)")
-    def delete_image(self, request, pk=None, image_id=None):
-        image = ProductImage.objects.filter(product_id=pk, pk=image_id).first()
-        if not image: return Response({"detail": "Image not found."}, status=404)
-        image.image.delete(save=False)
-        image.delete()
+        
+        return Response(ProductMediaSerializer(pm, context={"request": request}).data, status=201)
+
+    @action(detail=True, methods=["delete"], url_path=r"images/(?P<pm_id>[^/.]+)")
+    def delete_image(self, request, pk=None, pm_id=None):
+        pm = ProductMedia.objects.filter(product_id=pk, pk=pm_id).first()
+        if not pm:
+            return Response({"detail": "Media relation not found."}, status=404)
+        
+        media = pm.media
+        pm.delete()
+        
+        # If media is no longer used anywhere, we could delete it too
+        if not ProductMedia.objects.filter(media=media).exists() and \
+           not Category.objects.filter(media=media).exists() and \
+           not Collection.objects.filter(media=media).exists():
+            media.delete()
+            
         return Response(status=204)
 
 
@@ -73,14 +110,27 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
 
     def perform_create(self, serializer):
-        image = self.request.FILES.get("image")
-        if image: serializer.save(image=image)
-        else: serializer.save()
+        image_file = self.request.FILES.get("image")
+        media = None
+        if image_file:
+            media = Media.objects.create(
+                name=image_file.name,
+                content=image_file.read(),
+                content_type=image_file.content_type
+            )
+        serializer.save(media=media)
 
     def perform_update(self, serializer):
-        image = self.request.FILES.get("image")
-        if image: serializer.save(image=image)
-        else: serializer.save()
+        image_file = self.request.FILES.get("image")
+        if image_file:
+            media = Media.objects.create(
+                name=image_file.name,
+                content=image_file.read(),
+                content_type=image_file.content_type
+            )
+            serializer.save(media=media)
+        else:
+            serializer.save()
 
 
 class AdminCollectionViewSet(viewsets.ModelViewSet):
@@ -90,14 +140,27 @@ class AdminCollectionViewSet(viewsets.ModelViewSet):
     serializer_class = CollectionSerializer
 
     def perform_create(self, serializer):
-        image = self.request.FILES.get("image")
-        if image: serializer.save(image=image)
-        else: serializer.save()
+        image_file = self.request.FILES.get("image")
+        media = None
+        if image_file:
+            media = Media.objects.create(
+                name=image_file.name,
+                content=image_file.read(),
+                content_type=image_file.content_type
+            )
+        serializer.save(media=media)
 
     def perform_update(self, serializer):
-        image = self.request.FILES.get("image")
-        if image: serializer.save(image=image)
-        else: serializer.save()
+        image_file = self.request.FILES.get("image")
+        if image_file:
+            media = Media.objects.create(
+                name=image_file.name,
+                content=image_file.read(),
+                content_type=image_file.content_type
+            )
+            serializer.save(media=media)
+        else:
+            serializer.save()
 
 
 class AdminOrderViewSet(viewsets.ModelViewSet):
@@ -105,13 +168,13 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related("items").order_by("-created_at")
     serializer_class = OrderSerializer
     http_method_names = ["get", "patch", "head", "options"]
+
     def perform_update(self, serializer):
         old_status = self.get_object().status
         instance = serializer.save()
         if old_status != instance.status:
             OrderStatusHistory.objects.create(order=instance, status=instance.status)
             
-            # Notify Customer
             status_msgs = {
                 "confirmed": "confirmed and is being prepared.",
                 "processing": "being processed.",
@@ -144,6 +207,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
         
     def get_name(self, obj):
         return f"{obj.first_name} {obj.last_name}".strip() or obj.email
+
 
 class AdminUserViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]
@@ -182,16 +246,13 @@ class AdminContactMessageViewSet(viewsets.ModelViewSet):
             is_admin=True
         )
         
-        # Mark as replied and read
         message.status = "replied"
         message.is_read = True
         message.is_read_by_user = False
         message.save(update_fields=["status", "is_read", "is_read_by_user", "updated_at"])
         
-        # Notify via Email
         send_reply_notification(message, text)
         
-        # Notify user if exists
         if message.user:
             Notification.objects.create(
                 user=message.user,
@@ -213,6 +274,7 @@ class AdminContactMessageViewSet(viewsets.ModelViewSet):
 class AdminNotificationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = NotificationSerializer
+
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user).order_by("-created_at")
     
@@ -228,14 +290,23 @@ class AdminNotificationViewSet(viewsets.ReadOnlyModelViewSet):
 @permission_classes([IsAdminUser])
 def dashboard_view(request):
     orders = Order.objects.all()
-    return Response({"totalRevenue": orders.aggregate(total=Sum("total"))["total"] or 0, "totalOrders": orders.count(), "totalCustomers": User.objects.filter(is_staff=False).count(), "totalProducts": Product.objects.count(), "pendingOrders": orders.filter(status="pending").count(), "lowStockProducts": Product.objects.filter(stock__lte=5).count()})
+    return Response({
+        "totalRevenue": orders.aggregate(total=Sum("total"))["total"] or 0, 
+        "totalOrders": orders.count(), 
+        "totalCustomers": User.objects.filter(is_staff=False).count(), 
+        "totalProducts": Product.objects.count(), 
+        "pendingOrders": orders.filter(status="pending").count(), 
+        "lowStockProducts": Product.objects.filter(stock__lte=5).count()
+    })
 
 
 class AdminSettingsViewSet(viewsets.ViewSet):
     permission_classes = [IsAdminUser]
+
     def list(self, request):
         settings = StoreSettings.objects.filter(key="store").first()
         return Response(settings.data if settings else {})
+
     def update(self, request, pk=None):
         settings, _ = StoreSettings.objects.update_or_create(key="store", defaults={"data": request.data})
         return Response(settings.data)

@@ -5,19 +5,48 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.forms import PasswordResetForm
-from .models import Address, Cart, CartItem, Category, Collection, ContactMessage, ContactMessageReply, Notification, Order, Product, Wishlist, User
-from .serializers import AddressSerializer, CartItemSerializer, CartSerializer, CategorySerializer, CollectionSerializer, ContactMessageSerializer, ContactMessageReplySerializer, LoginSerializer, NewsletterSubscriberSerializer, NotificationSerializer, OrderSerializer, ProductSerializer, RegisterSerializer, UserSerializer
+from django.http import HttpResponse, Http404
+from .models import (
+    Address, Cart, CartItem, Category, Collection, 
+    ContactMessage, ContactMessageReply, Media, 
+    Notification, Order, Product, Wishlist, User
+)
+from .serializers import (
+    AddressSerializer, CartItemSerializer, CartSerializer, 
+    CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
+    ContactMessageReplySerializer, LoginSerializer, 
+    NewsletterSubscriberSerializer, NotificationSerializer, 
+    OrderSerializer, ProductSerializer, RegisterSerializer, UserSerializer
+)
 from .services import create_order
+
+
+class MediaView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        try:
+            media = Media.objects.get(pk=pk)
+            response = HttpResponse(media.content, content_type=media.content_type)
+            response['Cache-Control'] = 'public, max-age=31536000'
+            return response
+        except Media.DoesNotExist:
+            raise Http404
 
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response({"user": UserSerializer(user).data, "access": str(RefreshToken.for_user(user).access_token), "refresh": str(RefreshToken.for_user(user))}, status=status.HTTP_201_CREATED)
+        return Response({
+            "user": UserSerializer(user).data, 
+            "access": str(RefreshToken.for_user(user).access_token), 
+            "refresh": str(RefreshToken.for_user(user))
+        }, status=status.HTTP_201_CREATED)
 
 
 @api_view(["POST"])
@@ -26,7 +55,11 @@ def login_view(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     refresh = RefreshToken.for_user(serializer.validated_data["user"])
-    return Response({"user": UserSerializer(serializer.validated_data["user"]).data, "access": str(refresh.access_token), "refresh": str(refresh)})
+    return Response({
+        "user": UserSerializer(serializer.validated_data["user"]).data, 
+        "access": str(refresh.access_token), 
+        "refresh": str(refresh)
+    })
 
 
 @api_view(["POST"])
@@ -41,11 +74,14 @@ def password_reset_view(request):
 
 class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
-    def get_object(self): return self.request.user
+
+    def get_object(self): 
+        return self.request.user
 
 
 class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
+
     def get_queryset(self):
         queryset = self.queryset.filter(active=True)
         search = self.request.query_params.get("search")
@@ -53,8 +89,9 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.filter(name__icontains=search)
         return queryset
 
+
 class ProductViewSet(CatalogViewSet):
-    queryset = Product.objects.prefetch_related("variants").select_related("category", "collection")
+    queryset = Product.objects.prefetch_related("variants", "product_media__media").select_related("category", "collection")
     serializer_class = ProductSerializer
 
     def get_queryset(self):
@@ -103,23 +140,30 @@ class ProductViewSet(CatalogViewSet):
 
         return qs
 
+
 class CollectionViewSet(CatalogViewSet):
-    queryset = Collection.objects.prefetch_related("products")
+    queryset = Collection.objects.prefetch_related("products").select_related("media")
     serializer_class = CollectionSerializer
 
+
 class CategoryViewSet(CatalogViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().select_related("media")
     serializer_class = CategorySerializer
 
 
 class AddressViewSet(viewsets.ModelViewSet):
     serializer_class = AddressSerializer
-    def get_queryset(self): return Address.objects.filter(user=self.request.user).order_by("-is_default", "-created_at")
+
+    def get_queryset(self): 
+        return Address.objects.filter(user=self.request.user).order_by("-is_default", "-created_at")
+
     def perform_create(self, serializer):
         if serializer.validated_data.get("is_default") or not self.get_queryset().exists():
             Address.objects.filter(user=self.request.user).update(is_default=False)
             serializer.save(user=self.request.user, is_default=True)
-        else: serializer.save(user=self.request.user)
+        else: 
+            serializer.save(user=self.request.user)
+
     @action(detail=True, methods=["post"])
     def default(self, request, pk=None):
         address = self.get_object()
@@ -131,17 +175,22 @@ class AddressViewSet(viewsets.ModelViewSet):
 
 class CartView(generics.RetrieveUpdateAPIView):
     serializer_class = CartSerializer
-    def get_object(self): return Cart.objects.prefetch_related("items__product", "items__variant").get_or_create(user=self.request.user)[0]
+
+    def get_object(self): 
+        return Cart.objects.prefetch_related("items__product", "items__variant").get_or_create(user=self.request.user)[0]
+
     def update(self, request, *args, **kwargs):
         cart = self.get_object()
         CartItem.objects.filter(cart=cart).delete()
         for item_data in request.data.get("items", []):
             product_data = item_data.get("product", {})
             product_id = product_data.get("id") if isinstance(product_data, dict) else item_data.get("productId")
-            if not product_id: continue
+            if not product_id: 
+                continue
             
             product = Product.objects.filter(id=product_id, active=True).first()
-            if not product: continue
+            if not product: 
+                continue
             
             variant = product.variants.filter(name=item_data.get("color", "")).first()
             quantity = max(1, int(item_data.get("quantity", 1)))
@@ -150,20 +199,27 @@ class CartView(generics.RetrieveUpdateAPIView):
 
 
 class WishlistView(generics.RetrieveUpdateAPIView):
-    def get_object(self): return Wishlist.objects.get_or_create(user=self.request.user)[0]
-    def retrieve(self, request, *args, **kwargs): return Response({"product_ids": list(self.get_object().products.values_list("id", flat=True))})
+    def get_object(self): 
+        return Wishlist.objects.get_or_create(user=self.request.user)[0]
+
+    def retrieve(self, request, *args, **kwargs): 
+        return Response({"product_ids": list(self.get_object().products.values_list("id", flat=True))})
+
     def update(self, request, *args, **kwargs):
         wishlist = self.get_object()
         wishlist.products.set(Product.objects.filter(id__in=request.data.get("product_ids", [])))
         return Response({"product_ids": list(wishlist.products.values_list("id", flat=True))})
 
+
 class CartItemView(generics.CreateAPIView):
     serializer_class = CartItemSerializer
+
     def perform_create(self, serializer):
         cart, _ = Cart.objects.get_or_create(user=self.request.user)
         product = serializer.validated_data["product"]
         variant = serializer.validated_data.get("variant")
-        if variant and variant.product_id != product.id: raise serializers.ValidationError("Variant does not belong to product.")
+        if variant and variant.product_id != product.id: 
+            raise serializers.ValidationError("Variant does not belong to product.")
         item, created = CartItem.objects.get_or_create(cart=cart, product=product, variant=variant, defaults={"quantity": serializer.validated_data["quantity"]})
         if not created:
             item.quantity += serializer.validated_data["quantity"]
@@ -173,11 +229,20 @@ class CartItemView(generics.CreateAPIView):
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     http_method_names = ["get", "post", "head", "options"]
-    def get_queryset(self): return Order.objects.filter(user=self.request.user).prefetch_related("items")
+
+    def get_queryset(self): 
+        return Order.objects.filter(user=self.request.user).prefetch_related("items")
+
     def create(self, request, *args, **kwargs):
         try:
-            order = create_order(user=request.user, items=request.data.get("items", []), shipping=request.data.get("shippingAddress", {}), payment_method=request.data.get("paymentMethod", "Cash on delivery"), idempotency_key=request.data.get("idempotencyKey", ""))
-            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+            order = create_order(
+                user=request.user, 
+                items=request.data.get("items", []), 
+                shipping=request.data.get("shippingAddress", {}), 
+                payment_method=request.data.get("paymentMethod", "Cash on delivery"), 
+                idempotency_key=request.data.get("idempotencyKey", "")
+            )
+            return Response(OrderSerializer(order, context={"request": request}).data, status=status.HTTP_201_CREATED)
         except ValidationError as e:
             return Response({"detail": str(e.detail[0]) if isinstance(e.detail, list) else str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -186,13 +251,17 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = NotificationSerializer
-    def get_queryset(self): return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def get_queryset(self): 
+        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+
     @action(detail=True, methods=["post"])
     def read(self, request, pk=None):
         notification = self.get_object()
         notification.is_read = True
         notification.save(update_fields=["is_read"])
         return Response(self.get_serializer(notification).data)
+
     @action(detail=False, methods=["post"])
     def read_all(self, request):
         self.get_queryset().filter(is_read=False).update(is_read=True)
@@ -228,6 +297,7 @@ def contact_view(request):
         )
     
     return Response({"detail": "Message sent."}, status=status.HTTP_201_CREATED)
+
 
 class MyContactMessageViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ContactMessageSerializer

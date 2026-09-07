@@ -1,4 +1,4 @@
-package com.example.solenne_app
+package com.solenne.app
 
 import io.flutter.embedding.android.FlutterActivity
 

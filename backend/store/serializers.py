@@ -1,6 +1,21 @@
 from django.contrib.auth import authenticate
+from django.urls import reverse
 from rest_framework import serializers
-from .models import Address, Cart, CartItem, Category, Collection, ContactMessage, ContactMessageReply, NewsletterSubscriber, Notification, Order, OrderItem, Product, ProductImage, ProductVariant, User
+from .models import (
+    Address, Cart, CartItem, Category, Collection, 
+    ContactMessage, ContactMessageReply, Media, 
+    NewsletterSubscriber, Notification, Order, 
+    OrderItem, Product, ProductMedia, ProductVariant, User
+)
+
+
+def get_media_url(media, request):
+    if not media:
+        return None
+    url = reverse("media", args=[media.id])
+    if request:
+        return request.build_absolute_uri(url)
+    return url
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -27,6 +42,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
     def validate(self, attrs):
         user = authenticate(email=attrs["email"], password=attrs["password"])
         if not user:
@@ -36,88 +52,78 @@ class LoginSerializer(serializers.Serializer):
 
 
 class VariantSerializer(serializers.ModelSerializer):
-    media_images = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductVariant
-        fields = ("id", "name", "hex", "images", "stock", "sku", "media_images")
+        fields = ("id", "name", "hex", "images", "stock", "sku")
 
-    def get_media_images(self, obj):
+    def get_images(self, obj):
         request = self.context.get("request")
-        urls = []
-        for mi in obj.media_images.all():
-            if mi.image:
-                url = mi.image.url
-                if request:
-                    url = request.build_absolute_uri(url)
-                urls.append(url)
-        return urls
+        return [
+            get_media_url(pm.media, request) 
+            for pm in obj.product_media.all().select_related("media")
+        ]
 
 
-class ProductImageSerializer(serializers.ModelSerializer):
+class ProductMediaSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
     class Meta:
-        model = ProductImage
-        fields = ("id", "product", "variant", "image", "is_primary", "position", "created_at")
+        model = ProductMedia
+        fields = ("id", "product", "variant", "media", "url", "is_primary", "position", "created_at")
         read_only_fields = ("id", "created_at")
+
+    def get_url(self, obj):
+        return get_media_url(obj.media, self.context.get("request"))
 
 
 class ProductSerializer(serializers.ModelSerializer):
     variants = VariantSerializer(many=True, read_only=True)
     category = serializers.CharField(source="category.name", read_only=True)
     collection = serializers.CharField(source="collection.name", read_only=True)
-    # This field is used for both read (via to_representation) and write (via JSONField)
-    images = serializers.JSONField(required=False)
+    images = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ("id", "legacy_id", "name", "slug", "description", "price", "compare_at_price", "currency", "material", "dimensions", "stock", "featured", "bestseller", "is_new", "active", "images", "category", "collection", "variants", "created_at")
+        fields = (
+            "id", "legacy_id", "name", "slug", "description", 
+            "price", "compare_at_price", "currency", "material", 
+            "dimensions", "stock", "featured", "bestseller", 
+            "is_new", "active", "images", "category", 
+            "collection", "variants", "created_at"
+        )
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        # Merge JSON images with Media images
-        legacy_images = instance.images if isinstance(instance.images, list) else []
-        media_images = []
+    def get_images(self, obj):
         request = self.context.get("request")
-        
-        for mi in instance.media_images.all():
-            if mi.image:
-                url = mi.image.url
-                if request:
-                    url = request.build_absolute_uri(url)
-                media_images.append(url)
-        
-        data["images"] = legacy_images + media_images
-        return data
+        # Return base product images (those without a specific variant)
+        return [
+            get_media_url(pm.media, request) 
+            for pm in obj.product_media.filter(variant=None).select_related("media")
+        ]
 
 
 class CollectionSerializer(serializers.ModelSerializer):
     product_ids = serializers.PrimaryKeyRelatedField(source="products", many=True, read_only=True)
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = Collection
         fields = ("id", "legacy_id", "name", "slug", "description", "image", "active", "product_ids", "created_at")
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if instance.image:
-            request = self.context.get("request")
-            url = instance.image.url
-            if request:
-                data["image"] = request.build_absolute_uri(url)
-        return data
+    def get_image(self, obj):
+        return get_media_url(obj.media, self.context.get("request"))
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = Category
         fields = ("id", "legacy_id", "name", "slug", "description", "image", "active", "created_at")
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if instance.image:
-            request = self.context.get("request")
-            url = instance.image.url
-            if request:
-                data["image"] = request.build_absolute_uri(url)
-        return data
+    def get_image(self, obj):
+        return get_media_url(obj.media, self.context.get("request"))
 
 
 class AddressSerializer(serializers.ModelSerializer):
@@ -131,6 +137,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(source="product", queryset=Product.objects.filter(active=True), write_only=True)
     variant_id = serializers.PrimaryKeyRelatedField(source="variant", queryset=ProductVariant.objects.all(), write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = CartItem
         fields = ("id", "product", "product_id", "variant_id", "quantity")
@@ -138,6 +145,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
+
     class Meta:
         model = Cart
         fields = ("id", "items", "updated_at")
@@ -155,7 +163,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ("id", "order_number", "customer", "email", "phone", "date", "subtotal", "shipping_cost", "total", "payment_method", "payment_status", "status", "shipping", "items", "created_at", "updated_at")
+        fields = (
+            "id", "order_number", "customer", "email", "phone", 
+            "date", "subtotal", "shipping_cost", "total", 
+            "payment_method", "payment_status", "status", 
+            "shipping", "items", "created_at", "updated_at"
+        )
 
     def get_date(self, obj):
         return obj.created_at.date().isoformat()
@@ -170,6 +183,7 @@ class NewsletterSubscriberSerializer(serializers.ModelSerializer):
 
 class ContactMessageReplySerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source="sender.first_name", read_only=True)
+
     class Meta:
         model = ContactMessageReply
         fields = ("id", "message", "sender", "sender_name", "text", "is_admin", "created_at")
@@ -178,6 +192,7 @@ class ContactMessageReplySerializer(serializers.ModelSerializer):
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     replies = ContactMessageReplySerializer(many=True, read_only=True)
+
     class Meta:
         model = ContactMessage
         fields = ("id", "user", "name", "email", "subject", "message", "status", "is_read", "is_read_by_user", "replies", "created_at", "updated_at")

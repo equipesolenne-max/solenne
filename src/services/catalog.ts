@@ -1,5 +1,5 @@
 import type { Product, Collection } from "../types/product";
-import type { CollectionRecord, ProductRecord, ProductVariant } from "../types/admin";
+import type { CollectionRecord, ProductRecord } from "../types/admin";
 import { fetchCollections, fetchProducts } from "../api/products";
 import { getImageUrl } from "../utils/image";
 
@@ -141,7 +141,7 @@ export function toProduct(record: ProductRecord): Product {
     id: record.id,
     legacyId: record.legacy_id,
     name: record.name,
-    variant: record.colors?.[0] ?? "",
+    variant: record.variants?.[0]?.name ?? "",
     price: record.price,
     description: record.description,
     collection: record.collection,
@@ -150,18 +150,18 @@ export function toProduct(record: ProductRecord): Product {
     collectionSlug: record.collection_slug,
     category: record.category,
     images: productImages.length > 0 ? productImages : ["https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne"],
-    colors: (record.variants?.length ? record.variants : (record.colors ?? []).map((name): ProductVariant => ({ name, hex: colorHex(name), images: record.images ?? [], stock: record.stock }))).map((variant) => {
-      const allImages = [...(variant.images ?? []), ...(variant.media_images ?? [])].map(getImageUrl);
+    colors: (record.variants ?? []).map((variant) => {
+      const variantImages = (variant.images ?? []).map(getImageUrl);
       return {
         name: variant.name,
         hex: variant.hex,
-        image: allImages[0] ?? productImages[0] ?? "https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne",
-        images: allImages,
-        stock: variant.stock ?? record.stock,
+        image: variantImages[0] ?? productImages[0] ?? "https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne",
+        images: variantImages,
+        stock: variant.stock ?? 0,
       };
     }),
     isNew: record.is_new,
-    inStock: record.variants?.length ? record.variants.some((variant) => (variant.stock ?? record.stock) > 0) : record.stock > 0,
+    inStock: record.variants?.length ? record.variants.some((v) => (v.stock ?? 0) > 0) : record.stock > 0,
   };
 }
 
@@ -175,9 +175,4 @@ export function toCollection(record: CollectionRecord): Collection {
     image: getImageUrl(record.image),
     productIds: record.product_ids ?? []
   };
-}
-
-function colorHex(name: string) {
-  const colors: Record<string, string> = { Ivory: "#F3EDE1", Midnight: "#1B2A46", Champagne: "#D9C39C", "Soft Beige": "#DCD0BB" };
-  return colors[name] ?? "#C6A369";
 }

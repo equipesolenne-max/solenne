@@ -9,6 +9,7 @@ import '../../models/product_model.dart';
 import '../../services/product_repository.dart';
 import '../../state/cart_state.dart';
 import '../../state/wishlist_state.dart';
+import '../../core/utils/url_utils.dart';
 
 /// Large swipeable gallery, title, price, description, variant/color
 /// selection, availability, quantity, "ADD TO BAG" primary CTA, wishlist,
@@ -66,7 +67,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       : PageView.builder(
                           itemCount: product.images.length,
                           onPageChanged: (i) => setState(() => _galleryIndex = i),
-                          itemBuilder: (context, i) => Image.network(product.images[i], fit: BoxFit.cover),
+                          itemBuilder: (context, i) => UrlUtils.buildImage(product.images[i], fit: BoxFit.cover),
                         ),
                 ),
               ),

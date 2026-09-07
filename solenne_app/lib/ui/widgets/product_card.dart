@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/product.dart';
+import '../../core/utils/url_utils.dart';
 import '../screens/product_detail_screen.dart';
 import 'package:intl/intl.dart';
 
@@ -39,10 +40,7 @@ class ProductCard extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: product.images.isNotEmpty
-                        ? Image.network(
-                            product.images[0],
-                            fit: BoxFit.cover,
-                          )
+                        ? UrlUtils.buildImage(product.images[0], fit: BoxFit.cover)
                         : const Center(
                             child: Icon(Icons.image_outlined,
                                 color: SolenneColors.line),

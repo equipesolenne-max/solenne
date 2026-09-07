@@ -68,7 +68,7 @@ class ProductVariantModel {
       name: map['name'] as String? ?? '',
       hex: map['hex'] as String? ?? '#C6A369',
       stock: map['stock'] as int? ?? 0,
-      images: UrlUtils.sanitizeUrls(List<String>.from(map['media_images'] as List? ?? const [])),
+      images: UrlUtils.sanitizeUrls(List<String>.from(map['images'] as List? ?? const [])),
     );
   }
 }
