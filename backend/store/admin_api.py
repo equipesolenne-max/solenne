@@ -221,10 +221,8 @@ class MediaViewSet(viewsets.ModelViewSet):
             content=uploaded.read(),
             content_type=uploaded.content_type
         )
-        return Response({
-            "id": media.id,
-            "url": reverse("media", args=[media.id], request=request)
-        }, status=201)
+        serializer = self.get_serializer(media)
+        return Response(serializer.data, status=201)
 
 
 class AdminOrderViewSet(viewsets.ModelViewSet):
