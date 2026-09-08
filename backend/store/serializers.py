@@ -16,6 +16,17 @@ def get_media_url(media, request):
     return reverse("media", args=[media.id])
 
 
+class MediaSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Media
+        fields = ("id", "name", "url", "content_type", "created_at")
+
+    def get_url(self, obj):
+        return get_media_url(obj, self.context.get("request"))
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

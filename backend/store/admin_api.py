@@ -13,7 +13,7 @@ from .models import (
 )
 from .serializers import (
     CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
-    ContactMessageReplySerializer, HomeSectionSerializer, NotificationSerializer, 
+    ContactMessageReplySerializer, HomeSectionSerializer, MediaSerializer, NotificationSerializer, 
     OrderSerializer, ProductMediaSerializer, ProductSerializer, UserSerializer, VariantSerializer
 )
 from .email_service import notify_order_status, send_reply_notification
@@ -210,7 +210,7 @@ class MediaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
     queryset = Media.objects.defer("content").all()
-    serializer_class = serializers.Serializer # Minimal serializer for now
+    serializer_class = MediaSerializer
 
     def create(self, request, *args, **kwargs):
         uploaded = request.FILES.get("image")

@@ -3,7 +3,7 @@ import { useAdminCollection } from "../../hooks/useAdminCollection";
 import { createAdmin, deleteAdmin, updateAdmin, uploadMedia, reorderSections, addSectionItems } from "../../api/admin";
 import type { HomeSectionRecord, HomeSectionType, ProductRecord, CategoryRecord, CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
-import { optimizeImage } from "../../utils/image";
+import { getImageUrl, optimizeImage } from "../../utils/image";
 
 const SECTION_TYPES: Record<HomeSectionType, string> = {
   hero: "Hero Slide",
@@ -129,8 +129,6 @@ export default function AdminCMS() {
 
     setUploading(true);
     const optimizedFile = await optimizeImage(file);
-    const formData = new FormData();
-    formData.append("image", optimizedFile);
 
     try {
         const res = await uploadMedia(optimizedFile as File);
@@ -180,9 +178,6 @@ export default function AdminCMS() {
         await addSectionItems(editingId, "media", [...currentIds, ...newMediaIds]);
 
         await refresh();
-        // The refresh will update the form if we reopen or if we use the data from sections
-        // But for immediate feedback, we can update local state if we want.
-        // For now, refresh is safer.
     } catch (err) {
         setActionError("Failed to upload gallery images");
     } finally {
@@ -227,7 +222,7 @@ export default function AdminCMS() {
 
               <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-ivory-warm border border-line/50 flex items-center justify-center">
                 {section.media_url ? (
-                  <img src={section.media_url} className="h-full w-full object-cover" alt="" />
+                  <img src={getImageUrl(section.media_url)} className="h-full w-full object-cover" alt="" />
                 ) : (
                   <span className="text-[10px] uppercase tracking-tighter text-midnight/20">{section.section_type}</span>
                 )}
@@ -359,9 +354,9 @@ export default function AdminCMS() {
                     onChange={(e) => setForm({ ...form, platform: e.target.value as any })}
                     className="w-full bg-white border border-line rounded-2xl px-5 py-3 text-xs outline-none focus:ring-1 focus:ring-gold/30"
                   >
-                    <option value="both">Both</option>
-                    <option value="web">Web Only</option>
-                    <option value="mobile">Mobile Only</option>
+                    <option value=\"both\">Both</option>
+                    <option value=\"web\">Web Only</option>
+                    <option value=\"mobile\">Mobile Only</option>
                   </select>
                 </div>
 
@@ -437,7 +432,7 @@ export default function AdminCMS() {
                       onChange={(e) => setForm({ ...form, collection: e.target.value })}
                       className="w-full bg-white border border-line rounded-2xl px-5 py-3 text-xs outline-none focus:ring-1 focus:ring-gold/30"
                     >
-                      <option value="">Select a collection...</option>
+                      <option value=\"\">Select a collection...</option>
                       {allCollections.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -450,77 +445,77 @@ export default function AdminCMS() {
                     <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-2">Gallery Images</label>
                     <div className="flex flex-wrap gap-4 p-4 bg-white border border-line rounded-2xl">
                       {form.gallery?.map((img) => (
-                        <div key={img.id} className="relative h-20 w-20 rounded-lg overflow-hidden border border-line">
-                          <img src={img.url} className="h-full w-full object-cover" alt="" />
+                        <div key={img.id} className=\"relative h-20 w-20 rounded-lg overflow-hidden border border-line\">
+                          <img src={getImageUrl(img.url)} className=\"h-full w-full object-cover\" alt=\"\" />
                           <button
-                            type="button"
+                            type=\"button\"
                             onClick={async () => {
                                 if (!editingId) return;
                                 const nextIds = form.gallery?.filter(x => x.id !== img.id).map(g => g.id) || [];
-                                await addSectionItems(editingId, "media", nextIds);
+                                await addSectionItems(editingId, \"media\", nextIds);
                                 await refresh();
                             }}
-                            className="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-0.5"
+                            className=\"absolute top-1 right-1 bg-rose-500 text-white rounded-full p-0.5\"
                           >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            <svg className=\"w-3 h-3\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M6 18L18 6M6 6l12 12\" /></svg>
                           </button>
                         </div>
                       ))}
-                      <label className="h-20 w-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg cursor-pointer hover:border-gold/50 text-midnight/20">
-                        <input type="file" multiple hidden onChange={handleGalleryUpload} disabled={!editingId} />
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                      <label className=\"h-20 w-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg cursor-pointer hover:border-gold/50 text-midnight/20\">
+                        <input type=\"file\" multiple hidden onChange={handleGalleryUpload} disabled={!editingId} />
+                        <svg className=\"w-6 h-6\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\"><path strokeLinecap=\"round\" strokeLinejoin=\"round\" strokeWidth={2} d=\"M12 4v16m8-8H4\" /></svg>
                       </label>
                     </div>
-                    {!editingId && <p className="mt-2 text-[10px] text-amber-600">Save the section first to enable gallery uploads.</p>}
+                    {!editingId && <p className=\"mt-2 text-[10px] text-amber-600\">Save the section first to enable gallery uploads.</p>}
                   </div>
                 )}
               </div>
 
               {editingId && (
-                <div className="grid gap-6 md:grid-cols-2 p-6 bg-ivory-warm/30 rounded-3xl border border-line/50">
-                  <div className="space-y-4">
-                    <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60">Desktop Image</label>
-                    <div className="h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center">
+                <div className=\"grid gap-6 md:grid-cols-2 p-6 bg-ivory-warm/30 rounded-3xl border border-line/50\">
+                  <div className=\"space-y-4\">
+                    <label className=\"block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60\">Desktop Image</label>
+                    <div className=\"h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center\">
                       {form.media_url ? (
-                        <img src={form.media_url} className="h-full w-full object-cover" alt="" />
+                        <img src={getImageUrl(form.media_url)} className=\"h-full w-full object-cover\" alt=\"\" />
                       ) : (
-                        <span className="text-[10px] text-midnight/20 italic">No desktop image</span>
+                        <span className=\"text-[10px] text-midnight/20 italic\">No desktop image</span>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      <input type="file" id="media-upload" hidden onChange={handleMediaUpload} />
-                      <label htmlFor="media-upload" className="inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all">
-                        {uploading ? "Uploading..." : "Upload Desktop Image"}
+                    <div className=\"space-y-3\">
+                      <input type=\"file\" id=\"media-upload\" hidden onChange={handleMediaUpload} />
+                      <label htmlFor=\"media-upload\" className=\"inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all\">
+                        {uploading ? \"Uploading...\" : \"Upload Desktop Image\"}
                       </label>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60">Mobile Image</label>
-                    <div className="h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center">
+                  <div className=\"space-y-4\">
+                    <label className=\"block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60\">Mobile Image</label>
+                    <div className=\"h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center\">
                       {form.mobile_media_url ? (
-                        <img src={form.mobile_media_url} className="h-full w-full object-cover" alt="" />
+                        <img src={getImageUrl(form.mobile_media_url)} className=\"h-full w-full object-cover\" alt=\"\" />
                       ) : (
-                        <span className="text-[10px] text-midnight/20 italic">No mobile image</span>
+                        <span className=\"text-[10px] text-midnight/20 italic\">No mobile image</span>
                       )}
                     </div>
-                    <div className="space-y-3">
-                      <input type="file" id="mobile-media-upload" hidden onChange={handleMobileMediaUpload} />
-                      <label htmlFor="mobile-media-upload" className="inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all">
-                        {uploading ? "Uploading..." : "Upload Mobile Image"}
+                    <div className=\"space-y-3\">
+                      <input type=\"file\" id=\"mobile-media-upload\" hidden onChange={handleMobileMediaUpload} />
+                      <label htmlFor=\"mobile-media-upload\" className=\"inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all\">
+                        {uploading ? \"Uploading...\" : \"Upload Mobile Image\"}
                       </label>
                     </div>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <p className="text-[9px] text-midnight/40 leading-relaxed text-center">Recommended sizes: Desktop 2000x1200, Mobile 800x1200.</p>
+                  <div className=\"md:col-span-2\">
+                    <p className=\"text-[9px] text-midnight/40 leading-relaxed text-center\">Recommended sizes: Desktop 2000x1200, Mobile 800x1200.</p>
                   </div>
                 </div>
               )}
 
-              <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={closeModal} className="px-8 py-3 rounded-full font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 hover:text-midnight">Cancel</button>
-                <button type="submit" className="bg-midnight text-ivory px-10 py-3 rounded-full font-sans text-[10px] tracking-[0.2em] uppercase hover:bg-midnight-deep transition-all">Save Section</button>
+              <div className=\"flex justify-end gap-4 pt-4\">
+                <button type=\"button\" onClick={closeModal} className=\"px-8 py-3 rounded-full font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 hover:text-midnight\">Cancel</button>
+                <button type=\"submit\" className=\"bg-midnight text-ivory px-10 py-3 rounded-full font-sans text-[10px] tracking-[0.2em] uppercase hover:bg-midnight-deep transition-all\">Save Section</button>
               </div>
             </form>
           </div>

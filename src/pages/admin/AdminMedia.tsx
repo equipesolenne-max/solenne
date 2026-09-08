@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAdminCollection } from "../../hooks/useAdminCollection";
 import { uploadMedia, deleteAdmin } from "../../api/admin";
 import { readableApiError } from "../../services/errorMessage";
-import { optimizeImage } from "../../utils/image";
+import { getImageUrl, optimizeImage } from "../../utils/image";
 
 interface MediaRecord {
   id: string;
@@ -95,7 +95,7 @@ export default function AdminMedia() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
             {filteredMedia.map((item) => (
               <div key={item.id} className="group relative aspect-square rounded-2xl overflow-hidden border border-line bg-ivory-warm/20">
-                <img src={item.url} className="h-full w-full object-cover transition-transform group-hover:scale-105" alt={item.name} />
+                <img src={getImageUrl(item.url)} className="h-full w-full object-cover transition-transform group-hover:scale-105" alt={item.name} />
                 <div className="absolute inset-0 bg-midnight/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
                   <p className="text-[8px] text-ivory/80 text-center break-all line-clamp-2 px-2 uppercase tracking-tighter">{item.name}</p>
                   <div className="flex gap-2">
