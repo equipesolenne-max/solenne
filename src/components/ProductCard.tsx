@@ -1,6 +1,6 @@
 import { memo, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import type { Product } from "../types/product";
+import type { Product, ProductVariant } from "../types/product";
 import { formatDZD } from "../utils/currency";
 import { useCart } from "../contexts/CartProvider";
 import { useWishlist } from "../contexts/WishlistProvider";
@@ -10,24 +10,26 @@ function ProductCard({ product }: { product: Product }) {
   const { toggle, has } = useWishlist();
   const [loaded, setLoaded] = useState(false);
 
-  const [selectedColorName, setSelectedColorName] = useState<string>(
-    product.colors[0]?.name || product.variant
+  // Group variants by color to show unique colors
+  const colorVariants = useMemo(() => {
+    const map = new Map<string, ProductVariant>();
+    product.variants.forEach(v => {
+      if (!map.has(v.name)) map.set(v.name, v);
+    });
+    return Array.from(map.values());
+  }, [product.variants]);
+
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant>(
+    colorVariants[0] || product.variants[0]
   );
 
-  const activeColor = useMemo(
-    () =>
-      product.colors.find((c) => c.name === selectedColorName) ||
-      product.colors[0],
-    [product.colors, selectedColorName]
-  );
-
-  const displayImage = activeColor?.image || product.images[0];
+  const displayImage = selectedVariant?.image || product.images[0];
   const secondaryImage =
     product.images.length > 1
       ? product.images.find((img) => img !== displayImage) || product.images[1]
       : undefined;
 
-  const isSoldOut = !product.inStock || activeColor?.stock === 0;
+  const isSoldOut = !product.inStock || selectedVariant?.stock === 0;
   const isWishlisted = has(product.id);
 
   return (
@@ -43,7 +45,7 @@ function ProductCard({ product }: { product: Product }) {
           <img
             key={displayImage}
             src={displayImage}
-            alt={`${product.name} — ${selectedColorName}`}
+            alt={`${product.name} — ${selectedVariant?.name}`}
             loading="lazy"
             decoding="async"
             width="400"
@@ -83,7 +85,7 @@ function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        {/* Wishlist — small, discreet, always reachable on touch */}
+        {/* Wishlist */}
         <button
           className={`absolute top-3.5 right-3.5 h-8 w-8 flex items-center justify-center text-midnight transition-opacity duration-300 opacity-80 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 ${
             isWishlisted ? "md:opacity-100" : ""
@@ -109,7 +111,7 @@ function ProductCard({ product }: { product: Product }) {
           </svg>
         </button>
 
-        {/* Add to Bag — slim editorial bar, always visible on mobile, revealed on hover on desktop */}
+        {/* Add to Bag */}
         <div
           className={`absolute inset-x-0 bottom-0 transition-all duration-500 ease-out
             opacity-100 translate-y-0
@@ -120,7 +122,7 @@ function ProductCard({ product }: { product: Product }) {
             disabled={isSoldOut}
             onClick={(e) => {
               e.preventDefault();
-              addItem(product, selectedColorName);
+              addItem(product, selectedVariant.id);
             }}
           >
             {isSoldOut ? "Out of Stock" : "Add to Bag"}
@@ -130,26 +132,26 @@ function ProductCard({ product }: { product: Product }) {
 
       {/* Info */}
       <div className="pt-4 flex flex-col items-center text-center">
-        {product.colors.length > 1 && (
+        {colorVariants.length > 1 && (
           <div className="flex gap-2 mb-3.5">
-            {product.colors.map((c) => {
-              const isSelected = selectedColorName === c.name;
+            {colorVariants.map((v) => {
+              const isSelected = selectedVariant.name === v.name;
               return (
                 <button
-                  key={c.name}
-                  onClick={() => setSelectedColorName(c.name)}
-                  aria-label={`View ${product.name} in ${c.name}`}
+                  key={v.name}
+                  onClick={() => setSelectedVariant(v)}
+                  aria-label={`View ${product.name} in ${v.name}`}
                   aria-pressed={isSelected}
                   className={`relative h-3.5 w-3.5 rounded-full transition-all duration-300 ring-1 ring-offset-2 ring-offset-ivory-warm ${
                     isSelected
                       ? "ring-midnight/70"
                       : "ring-transparent hover:ring-midnight/25"
                   }`}
-                  title={c.name}
+                  title={v.name}
                 >
                   <span
                     className="absolute inset-0 rounded-full"
-                    style={{ backgroundColor: c.hex }}
+                    style={{ backgroundColor: v.hex }}
                   />
                 </button>
               );
@@ -163,11 +165,11 @@ function ProductCard({ product }: { product: Product }) {
           </h3>
 
           <p className="font-voice italic text-[12px] text-midnight/45 mt-1">
-            {selectedColorName}
+            {selectedVariant?.name}
           </p>
 
           <p className="font-sans text-[12.5px] text-midnight/80 mt-2 tracking-wide">
-            {formatDZD(product.price)}
+            {formatDZD(selectedVariant?.price || product.price)}
           </p>
         </Link>
       </div>

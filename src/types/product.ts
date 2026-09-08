@@ -1,27 +1,36 @@
-export interface ProductColor {
+export interface ProductVariant {
+  id: string;
   name: string;
+  size?: string;
   hex: string;
   image: string;
-  images?: string[];
-  stock?: number;
+  images: string[];
+  stock: number;
+  price?: number;
+  compareAtPrice?: number;
+  sku?: string;
 }
 
 export interface Product {
   id: string;
   legacyId?: string;
   name: string; // e.g. "SOLENNE SILK"
-  variant: string; // e.g. "Ivory"
-  price: number; // in DZD
+  price: number; // base price in DZD
+  compareAtPrice?: number;
   description: string;
   collection: string;
-  slug?: string;
+  slug: string;
   collectionId?: string;
   collectionSlug?: string;
   category: string;
-  images: string[];
-  colors: ProductColor[];
+  images: string[]; // general images
+  variants: ProductVariant[];
   isNew?: boolean;
   inStock: boolean;
+  material?: string;
+  dimensions?: string;
+  care?: string;
+  details?: string[];
 }
 
 export interface Collection {

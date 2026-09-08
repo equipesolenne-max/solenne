@@ -215,7 +215,12 @@ class CartView(generics.RetrieveUpdateAPIView):
             if not product: 
                 continue
             
-            variant = product.variants.filter(name=item_data.get("color", "")).first()
+            variant_id = item_data.get("variantId")
+            if variant_id:
+                variant = product.variants.filter(id=variant_id).first()
+            else:
+                variant = product.variants.filter(name=item_data.get("color", ""), size=item_data.get("size", "")).first()
+
             quantity = max(1, int(item_data.get("quantity", 1)))
             CartItem.objects.create(cart=cart, product=product, variant=variant, quantity=quantity)
         return Response(CartSerializer(self.get_object()).data)

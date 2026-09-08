@@ -99,15 +99,21 @@ class Product(models.Model):
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")
     name = models.CharField(max_length=100)
+    size = models.CharField(max_length=40, blank=True)
     hex = models.CharField(max_length=7, default="#C6A369")
+    price = models.PositiveIntegerField(null=True, blank=True)
+    compare_at_price = models.PositiveIntegerField(null=True, blank=True)
     stock = models.PositiveIntegerField(default=0)
     sku = models.CharField(max_length=100, blank=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["product", "name"], name="unique_product_variant")]
+        constraints = [models.UniqueConstraint(fields=["product", "name", "size"], name="unique_product_variant")]
 
     def __str__(self):
-        return f"{self.product.name} - {self.name}"
+        parts = [self.product.name, self.name]
+        if self.size:
+            parts.append(self.size)
+        return " - ".join(parts)
 
 
 class ProductMedia(models.Model):

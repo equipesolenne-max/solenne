@@ -3,8 +3,22 @@ import { useUserAuth } from "./UserAuthProvider";
 import type { Product } from "../types/product";
 import { getCart, saveCart } from "../api/account";
 
-export interface CartItem { product: Product; quantity: number; color: string; }
-interface CartContextValue { items: CartItem[]; loading: boolean; addItem: (product: Product, color?: string) => void; updateQuantity: (productId: string, color: string, quantity: number) => void; removeItem: (productId: string, color: string) => void; clear: () => void; }
+export interface CartItem {
+  product: Product;
+  quantity: number;
+  variantId?: string;
+  color?: string; // Legacy/Fallback
+  size?: string;
+}
+
+interface CartContextValue {
+  items: CartItem[];
+  loading: boolean;
+  addItem: (product: Product, variantId?: string, quantity?: number) => void;
+  updateQuantity: (productId: string, variantId: string | undefined, quantity: number) => void;
+  removeItem: (productId: string, variantId: string | undefined) => void;
+  clear: () => void;
+}
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 const STORAGE_KEY = "solenne-cart";
 
@@ -33,7 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (localItems.length > 0) {
         const merged = [...remoteItems];
         for (const local of localItems) {
-          if (!merged.some(m => m.product.id === local.product.id && m.color === local.color)) {
+          if (!merged.some(m => m.product.id === local.product.id && m.variantId === local.variantId)) {
             merged.push(local);
           }
         }
@@ -62,14 +76,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CartContextValue>(() => ({
     items, loading,
-    addItem: (product, color = product.variant) => setItems((current) => {
-      const match = current.find((item) => item.product.id === product.id && item.color === color);
-      const variantStock = product.colors.find((item) => item.name === color)?.stock ?? (product.inStock ? Number.MAX_SAFE_INTEGER : 0);
-      if (match) return current.map((item) => item === match ? { ...item, quantity: Math.min(item.quantity + 1, variantStock) } : item);
-      return variantStock > 0 ? [...current, { product, color, quantity: 1 }] : current;
+    addItem: (product, variantId, quantity = 1) => setItems((current) => {
+      const match = current.find((item) => item.product.id === product.id && item.variantId === variantId);
+      const variant = product.variants.find(v => v.id === variantId);
+      const variantStock = variant?.stock ?? (product.inStock ? Number.MAX_SAFE_INTEGER : 0);
+
+      if (match) {
+        return current.map((item) => item === match ? { ...item, quantity: Math.min(item.quantity + quantity, variantStock) } : item);
+      }
+      return variantStock > 0 ? [...current, { product, variantId, quantity, color: variant?.name, size: variant?.size }] : current;
     }),
-    updateQuantity: (productId, color, quantity) => setItems((current) => quantity < 1 ? current.filter((item) => !(item.product.id === productId && item.color === color)) : current.map((item) => item.product.id === productId && item.color === color ? { ...item, quantity } : item)),
-    removeItem: (productId, color) => setItems((current) => current.filter((item) => !(item.product.id === productId && item.color === color))),
+    updateQuantity: (productId, variantId, quantity) => setItems((current) =>
+      quantity < 1
+        ? current.filter((item) => !(item.product.id === productId && item.variantId === variantId))
+        : current.map((item) => item.product.id === productId && item.variantId === variantId ? { ...item, quantity } : item)
+    ),
+    removeItem: (productId, variantId) => setItems((current) =>
+      current.filter((item) => !(item.product.id === productId && item.variantId === variantId))
+    ),
     clear: () => setItems([]),
   }), [items, loading]);
 

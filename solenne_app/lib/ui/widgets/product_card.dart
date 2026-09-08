@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
-import '../../models/product.dart';
+import '../../models/product_model.dart';
 import '../../core/utils/url_utils.dart';
-import '../screens/product_detail_screen.dart';
+import '../screens/product_details_screen.dart';
 import 'package:intl/intl.dart';
 
 class ProductCard extends StatelessWidget {
-  final Product product;
+  final ProductModel product;
 
   const ProductCard({super.key, required this.product});
 
-  String formatPrice(int price) {
+  String formatPrice(double price) {
     final formatter = NumberFormat("#,###", "fr_DZ");
     return "${formatter.format(price)} DA";
   }
@@ -22,7 +22,7 @@ class ProductCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(product: product),
+            builder: (context) => ProductDetailsScreen(productId: product.id),
           ),
         );
       },
@@ -65,15 +65,6 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: IconButton(
-                      icon: const Icon(Icons.favorite_border,
-                          size: 20, color: SolenneColors.midnight),
-                      onPressed: () {},
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -83,20 +74,21 @@ class ProductCard extends StatelessWidget {
             product.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.5,
-                ),
+            style: const TextStyle(
+              color: SolenneColors.midnight,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             formatPrice(product.price),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: SolenneColors.midnight.withOpacity(0.6),
-                  fontSize: 13,
-                  letterSpacing: 0.5,
-                ),
+            style: TextStyle(
+              color: SolenneColors.midnight.withOpacity(0.6),
+              fontSize: 13,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),

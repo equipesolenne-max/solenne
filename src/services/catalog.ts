@@ -141,8 +141,8 @@ export function toProduct(record: ProductRecord): Product {
     id: record.id,
     legacyId: record.legacy_id,
     name: record.name,
-    variant: record.variants?.[0]?.name ?? "",
     price: record.price,
+    compareAtPrice: record.compare_at_price,
     description: record.description,
     collection: record.collection,
     slug: record.slug,
@@ -150,18 +150,28 @@ export function toProduct(record: ProductRecord): Product {
     collectionSlug: record.collection_slug,
     category: record.category,
     images: productImages.length > 0 ? productImages : ["https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne"],
-    colors: (record.variants ?? []).map((variant) => {
-      const variantImages = (variant.images ?? []).map(getImageUrl);
+    variants: (record.variants ?? []).map((v) => {
+      const variantImages = (v.images ?? []).map(getImageUrl);
       return {
-        name: variant.name,
-        hex: variant.hex,
+        id: v.id || "",
+        name: v.name,
+        size: v.size,
+        hex: v.hex,
         image: variantImages[0] ?? productImages[0] ?? "https://placehold.co/1000x1250/F3EDE1/1B2A46?text=Solenne",
         images: variantImages,
-        stock: variant.stock ?? 0,
+        stock: v.stock ?? 0,
+        price: v.price,
+        compareAtPrice: v.compare_at_price,
+        sku: v.sku,
       };
     }),
     isNew: record.is_new,
     inStock: record.variants?.length ? record.variants.some((v) => (v.stock ?? 0) > 0) : record.stock > 0,
+    material: record.material,
+    dimensions: record.dimensions,
+    // Add these if they exist in record, or leave as undefined
+    care: (record as any).care,
+    details: (record as any).details,
   };
 }
 

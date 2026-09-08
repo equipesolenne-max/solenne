@@ -247,9 +247,11 @@ export default function AdminProductForm() {
             <div className="mb-3 flex items-center justify-between"><label className="font-sans text-[11px] tracking-[0.18em] uppercase text-[#1B2A46]/70">Color variants</label><button type="button" onClick={addVariant} className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#1B2A46] hover:text-[#C6A369]">Add color</button></div>
             <div className="space-y-4">
               {(form.variants ?? []).map((variant, index) => (
-                <div key={`variant-${index}`} className="grid gap-3 border-t border-[#1B2A46]/10 pt-4 md:grid-cols-[1fr_100px_120px_1fr_auto] md:items-end">
+                <div key={`variant-${index}`} className="grid gap-3 border-t border-[#1B2A46]/10 pt-4 md:grid-cols-[1fr_80px_100px_100px_100px_1fr_auto] md:items-end">
                     <label className="text-sm">Color name<input value={variant.name} onChange={(event) => updateVariant(index, { name: event.target.value })} required className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
+                    <label className="text-sm">Size<input value={variant.size || ""} onChange={(event) => updateVariant(index, { size: event.target.value })} className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
                     <label className="text-sm">HEX<input type="color" value={variant.hex} onChange={(event) => updateVariant(index, { hex: event.target.value })} className="mt-2 h-10 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] p-1" /></label>
+                    <label className="text-sm">Price<input type="number" value={variant.price || ""} onChange={(event) => updateVariant(index, { price: event.target.value ? Number(event.target.value) : undefined })} className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
                     <label className="text-sm">Stock<input type="number" min="0" value={variant.stock ?? 0} onChange={(event) => updateVariant(index, { stock: Number(event.target.value) })} className="mt-2 w-full border border-[#1B2A46]/15 bg-[#F8F4EC] px-3 py-2 outline-none focus:border-[#C6A369]" /></label>
                     <label className="text-sm">Images
                         <input type="file" accept="image/*" multiple onChange={(event) => void handleVariantImages(event, index)} disabled={!productId} className="mt-2 block w-full text-xs disabled:opacity-50" />

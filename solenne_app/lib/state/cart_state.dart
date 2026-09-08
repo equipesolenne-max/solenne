@@ -8,19 +8,23 @@ class CartLine {
     required this.id,
     required this.product,
     required this.variantName,
+    this.variantSize,
     required this.variantId,
     this.quantity = 1,
+    this.price = 0.0,
   });
 
   final int id; // Django CartItem ID
   final ProductModel product;
   final String variantName;
+  final String? variantSize;
   final int? variantId;
   int quantity;
+  final double price;
 
-  double get lineTotal => product.price * quantity;
+  double get lineTotal => price * quantity;
 
-  String get key => '${product.id}_$variantName';
+  String get key => '${product.id}_${variantId ?? 'base'}';
 }
 
 class CartState extends ChangeNotifier {
@@ -59,19 +63,29 @@ class CartState extends ChangeNotifier {
         final productData = item['product'];
         final product = ProductModel.fromMap(productData['id'].toString(), productData);
         final variantId = item['variant_id'];
-        // Find variant name if possible
+        
         String vName = '';
+        String? vSize;
+        double price = product.price;
+
         if (variantId != null) {
-          final v = product.variants.firstWhere((v) => v.id == variantId, orElse: () => const ProductVariantModel(id: 0, name: '', hex: '', stock: 0));
+          final v = product.variants.firstWhere(
+            (v) => v.id == variantId, 
+            orElse: () => const ProductVariantModel(id: 0, name: '', hex: '', stock: 0)
+          );
           vName = v.name;
+          vSize = v.size;
+          if (v.price != null) price = v.price!;
         }
         
         final line = CartLine(
           id: item['id'],
           product: product,
           variantName: vName,
+          variantSize: vSize,
           variantId: variantId,
           quantity: item['quantity'],
+          price: price,
         );
         _lines[line.key] = line;
       }

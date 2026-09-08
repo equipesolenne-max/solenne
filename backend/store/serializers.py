@@ -65,7 +65,7 @@ class VariantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVariant
-        fields = ("id", "name", "hex", "images", "stock", "sku")
+        fields = ("id", "name", "size", "hex", "price", "compare_at_price", "images", "stock", "sku")
 
     def get_images(self, obj):
         request = self.context.get("request")
@@ -88,7 +88,7 @@ class ProductMediaSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    variants = VariantSerializer(many=True, read_only=True)
+    variants = VariantSerializer(many=True, required=False)
     category = serializers.CharField(source="category.name", read_only=True)
     collection = serializers.CharField(source="collection.name", read_only=True)
     images = serializers.SerializerMethodField()
@@ -105,11 +105,45 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_images(self, obj):
         request = self.context.get("request")
-        # Return base product images (those without a specific variant)
         return [
             get_media_url(pm.media, request) 
             for pm in obj.product_media.filter(variant=None).select_related("media")
         ]
+
+    def create(self, validated_data):
+        variants_data = validated_data.pop('variants', [])
+        product = Product.objects.create(**validated_data)
+        for variant_data in variants_data:
+            ProductVariant.objects.create(product=product, **variant_data)
+        return product
+
+    def update(self, instance, validated_data):
+        variants_data = validated_data.pop('variants', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if variants_data is not None:
+            keep_variants = []
+            for variant_data in variants_data:
+                # Remove images from variant_data if it's there as it's a SerializerMethodField usually,
+                # but in write context it might be different.
+                variant_data.pop('images', None)
+                v_id = variant_data.get('id')
+                if v_id:
+                    v = ProductVariant.objects.filter(id=v_id, product=instance).first()
+                    if v:
+                        for v_attr, v_value in variant_data.items():
+                            setattr(v, v_attr, v_value)
+                        v.save()
+                        keep_variants.append(v.id)
+                else:
+                    v = ProductVariant.objects.create(product=instance, **variant_data)
+                    keep_variants.append(v.id)
+            
+            ProductVariant.objects.filter(product=instance).exclude(id__in=keep_variants).delete()
+            
+        return instance
 
 
 class CollectionSerializer(serializers.ModelSerializer):

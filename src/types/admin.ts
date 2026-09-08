@@ -36,7 +36,10 @@ export interface ProductRecord {
 export interface ProductVariant {
   id?: string;
   name: string;
+  size?: string;
   hex: string;
+  price?: number;
+  compare_at_price?: number;
   images: string[];
   media_images?: string[];
   stock?: number;
@@ -79,7 +82,7 @@ export interface OrderRecord {
   payment_method: string;
   payment_status: "pending" | "paid" | "refunded";
   status: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "returned";
-  items: Array<{ product_id?: string; name: string; color?: string; size?: string; image?: string; quantity: number; price: number; subtotal: number }>;
+  items: Array<{ product_id?: string; variant_id?: string; name: string; color?: string; size?: string; image?: string; quantity: number; price: number; subtotal: number }>;
   shipping: {
     wilaya: string;
     commune: string;

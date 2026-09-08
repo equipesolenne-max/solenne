@@ -88,8 +88,10 @@ export default function Checkout() {
       const result = await api.post<{ id: string }>("/orders/", {
         items: items.map(item => ({
           productId: item.product.id,
+          variantId: item.variantId,
           quantity: item.quantity,
-          color: item.color
+          color: item.color,
+          size: item.size
         })),
         shippingAddress: {
           name: form.name.trim(),

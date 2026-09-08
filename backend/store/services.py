@@ -38,27 +38,49 @@ def create_order(*, user: User, items: list[dict], shipping: dict, payment_metho
             product = products.get(pid)
             if not product or quantity < 1:
                 raise ValidationError("Invalid order item.")
+            
             variant = None
+            variant_id = item.get("variantId")
             color = item.get("color", "")
-            if color:
-                variant = next((candidate for candidate in product.variants.all() if candidate.name == color), None)
-                if not variant:
-                    raise ValidationError(f"Variant {color} is unavailable.")
+            size = item.get("size", "")
+            
+            if variant_id:
+                variant = next((candidate for candidate in product.variants.all() if str(candidate.id) == str(variant_id)), None)
+            elif color:
+                variant = next((candidate for candidate in product.variants.all() if candidate.name == color and candidate.size == size), None)
+            
+            if variant:
                 if variant.stock < quantity:
-                    raise ValidationError(f"Insufficient stock for {product.name}.")
+                    raise ValidationError(f"Insufficient stock for {product.name} ({variant.name}{' ' + variant.size if variant.size else ''}).")
                 variant.stock -= quantity
                 variant.save(update_fields=["stock"])
-            elif product.stock < quantity:
-                raise ValidationError(f"Insufficient stock for {product.name}.")
-            if not variant:
+                price = variant.price if variant.price is not None else product.price
+            else:
+                if product.stock < quantity:
+                    raise ValidationError(f"Insufficient stock for {product.name}.")
                 product.stock -= quantity
                 product.save(update_fields=["stock"])
-            line_total = product.price * quantity
+                price = product.price
+                
+            line_total = price * quantity
             subtotal += line_total
-            resolved.append((product, variant, color, quantity, line_total))
+            resolved.append((product, variant, color, size, quantity, price, line_total))
+        
         shipping_cost = 0 if subtotal >= SHIPPING_THRESHOLD else SHIPPING_COST
-        order = Order.objects.create(user=user, order_number=f"SOL-{str(Order.objects.count() + 1).zfill(6)}", customer=shipping.get("name", "").strip(), email=user.email, phone=shipping.get("phone", "").strip(), subtotal=subtotal, shipping_cost=shipping_cost, total=subtotal + shipping_cost, payment_method=payment_method or "Cash on delivery", shipping={"wilaya": shipping.get("wilaya", ""), "commune": shipping.get("commune", ""), "address": shipping.get("address", "")})
-        for product, variant, color, quantity, line_total in resolved:
+        order = Order.objects.create(
+            user=user, 
+            order_number=f"SOL-{str(Order.objects.count() + 1).zfill(6)}", 
+            customer=shipping.get("name", "").strip(), 
+            email=user.email, 
+            phone=shipping.get("phone", "").strip(), 
+            subtotal=subtotal, 
+            shipping_cost=shipping_cost, 
+            total=subtotal + shipping_cost, 
+            payment_method=payment_method or "Cash on delivery", 
+            shipping={"wilaya": shipping.get("wilaya", ""), "commune": shipping.get("commune", ""), "address": shipping.get("address", "")}
+        )
+        
+        for product, variant, color, size, quantity, price, line_total in resolved:
             # Try to get a primary image from ProductMedia
             image_url = ""
             pm = product.product_media.filter(variant=variant, is_primary=True).first()
@@ -71,11 +93,18 @@ def create_order(*, user: User, items: list[dict], shipping: dict, payment_metho
             
             if pm:
                 from .serializers import get_media_url
-                # We need a request to build absolute URL, but service doesn't have it.
-                # Relative URL should be fine for OrderItem image path storage.
                 image_url = get_media_url(pm.media, None)
             
-            OrderItem.objects.create(order=order, product=product, name=product.name, color=color, image=image_url, quantity=quantity, price=product.price, subtotal=line_total)
+            OrderItem.objects.create(
+                order=order, 
+                product=product, 
+                name=product.name, 
+                color=f"{color}{' ' + size if size else ''}".strip(), 
+                image=image_url, 
+                quantity=quantity, 
+                price=price, 
+                subtotal=line_total
+            )
         OrderStatusHistory.objects.create(order=order, status=order.status)
         IdempotencyKey.objects.create(key=idempotency_key, user=user, order=order)
         
