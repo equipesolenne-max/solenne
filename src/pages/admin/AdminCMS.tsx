@@ -4,7 +4,7 @@ import { createAdmin, deleteAdmin, updateAdmin } from "../../api/admin";
 import { api } from "../../api/client";
 import type { HomeSectionRecord, HomeSectionType, ProductRecord, CategoryRecord, CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
-import { getImageUrl } from "../../utils/image";
+import { getImageUrl, optimizeImage } from "../../utils/image";
 
 const SECTION_TYPES: Record<HomeSectionType, string> = {
   hero: "Hero Slide",
@@ -134,8 +134,9 @@ export default function AdminCMS() {
     if (!file || !editingId) return;
 
     setUploading(true);
+    const optimizedFile = await optimizeImage(file);
     const formData = new FormData();
-    formData.append("image", file);
+    formData.append("image", optimizedFile);
 
     try {
         const res: any = await api.post("/admin/media/", formData);
@@ -155,9 +156,10 @@ export default function AdminCMS() {
 
     setUploading(true);
     try {
-        const results = await Promise.all(files.map(file => {
+        const results = await Promise.all(files.map(async (file) => {
+            const optimizedFile = await optimizeImage(file);
             const formData = new FormData();
-            formData.append("image", file);
+            formData.append("image", optimizedFile);
             return api.post("/admin/media/", formData);
         }));
 

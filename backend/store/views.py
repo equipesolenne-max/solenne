@@ -1,3 +1,4 @@
+from django.db.models import Q, Prefetch
 from rest_framework import generics, serializers, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action, api_view, permission_classes
@@ -8,7 +9,8 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.http import HttpResponse, Http404
 from .models import (
     Address, Cart, CartItem, Category, Collection, 
-    ContactMessage, ContactMessageReply, HomeSection, Media, 
+    ContactMessage, ContactMessageReply, HomeSection, HomeSectionCategory, 
+    HomeSectionMedia, HomeSectionProduct, Media, ProductMedia,
     Notification, Order, Product, Wishlist, User
 )
 from .serializers import (
@@ -91,7 +93,10 @@ class CatalogViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ProductViewSet(CatalogViewSet):
-    queryset = Product.objects.prefetch_related("variants", "product_media__media").select_related("category", "collection")
+    queryset = Product.objects.prefetch_related(
+        Prefetch("product_media", queryset=ProductMedia.objects.select_related("media").defer("media__content")),
+        "variants"
+    ).select_related("category", "collection")
     serializer_class = ProductSerializer
 
     def get_queryset(self):
@@ -142,12 +147,12 @@ class ProductViewSet(CatalogViewSet):
 
 
 class CollectionViewSet(CatalogViewSet):
-    queryset = Collection.objects.prefetch_related("products").select_related("media")
+    queryset = Collection.objects.select_related("media").defer("media__content").prefetch_related("products").all()
     serializer_class = CollectionSerializer
 
 
 class CategoryViewSet(CatalogViewSet):
-    queryset = Category.objects.all().select_related("media")
+    queryset = Category.objects.select_related("media").defer("media__content").all()
     serializer_class = CategorySerializer
 
 
@@ -280,13 +285,13 @@ def newsletter_view(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def home_view(request):
-    sections = HomeSection.objects.filter(is_active=True).prefetch_related(
-        "section_media__media",
-        "section_products__product__product_media__media",
-        "section_products__product__variants",
-        "section_categories__category__media",
-        "collection__media",
-        "media"
+    sections = HomeSection.objects.filter(is_active=True).select_related("media", "collection").defer("media__content", "collection__media__content").prefetch_related(
+        Prefetch("section_media", queryset=HomeSectionMedia.objects.select_related("media").defer("media__content")),
+        Prefetch("section_products", queryset=HomeSectionProduct.objects.select_related("product").prefetch_related(
+            Prefetch("product__product_media", queryset=ProductMedia.objects.select_related("media").defer("media__content")),
+            "product__variants"
+        )),
+        Prefetch("section_categories", queryset=HomeSectionCategory.objects.select_related("category__media").defer("category__media__content"))
     )
     serializer = HomeSectionSerializer(sections, many=True, context={"request": request})
     return Response(serializer.data)

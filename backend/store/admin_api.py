@@ -1,4 +1,4 @@
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Prefetch
 from django.urls import reverse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -29,7 +29,10 @@ class AdminProductSerializer(ProductSerializer):
 
 class AdminProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = Product.objects.prefetch_related("variants", "product_media").select_related("category", "collection")
+    queryset = Product.objects.prefetch_related(
+        Prefetch("product_media", queryset=ProductMedia.objects.select_related("media").defer("media__content")),
+        "variants"
+    ).select_related("category", "collection")
     serializer_class = AdminProductSerializer
 
     @action(detail=True, methods=["post"], url_path="stock")
@@ -108,7 +111,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    queryset = Category.objects.all()
+    queryset = Category.objects.select_related("media").defer("media__content").all()
     serializer_class = CategorySerializer
 
     def perform_create(self, serializer):
@@ -138,7 +141,7 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 class AdminCollectionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    queryset = Collection.objects.prefetch_related("products")
+    queryset = Collection.objects.select_related("media").defer("media__content").prefetch_related("products").all()
     serializer_class = CollectionSerializer
 
     def perform_create(self, serializer):
@@ -167,10 +170,10 @@ class AdminCollectionViewSet(viewsets.ModelViewSet):
 
 class AdminHomeSectionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = HomeSection.objects.prefetch_related(
-        "section_media__media",
-        "section_products__product",
-        "section_categories__category"
+    queryset = HomeSection.objects.select_related("media", "collection").defer("media__content", "collection__media__content").prefetch_related(
+        Prefetch("section_media", queryset=HomeSectionMedia.objects.select_related("media").defer("media__content")),
+        Prefetch("section_products", queryset=HomeSectionProduct.objects.select_related("product")),
+        Prefetch("section_categories", queryset=HomeSectionCategory.objects.select_related("category__media").defer("category__media__content"))
     ).all()
     serializer_class = HomeSectionSerializer
 
@@ -206,7 +209,7 @@ class AdminHomeSectionViewSet(viewsets.ModelViewSet):
 class MediaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     parser_classes = [MultiPartParser, FormParser]
-    queryset = Media.objects.all()
+    queryset = Media.objects.defer("content").all()
     serializer_class = serializers.Serializer # Minimal serializer for now
 
     def create(self, request, *args, **kwargs):

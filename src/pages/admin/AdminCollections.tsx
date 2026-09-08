@@ -4,6 +4,7 @@ import { createAdmin, deleteAdmin, updateAdmin } from "../../api/admin";
 import type { CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
 import { invalidateCatalogCache } from "../../services/catalog";
+import { optimizeImage } from "../../utils/image";
 
 const emptyCollection: CollectionRecord = {
   id: "",
@@ -29,7 +30,10 @@ export default function AdminCollections() {
     formData.append("slug", form.slug || form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
     formData.append("description", form.description);
     formData.append("active", String(form.active));
-    if (file) formData.append("image", file);
+    if (file) {
+        const optimizedFile = await optimizeImage(file);
+        formData.append("image", optimizedFile);
+    }
 
     setActionError("");
     try {

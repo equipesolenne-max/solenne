@@ -7,7 +7,7 @@ import type { ProductRecord, ProductVariant } from "../../types/admin";
 import type { CategoryRecord, CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
 import { invalidateCatalogCache } from "../../services/catalog";
-import { getImageUrl } from "../../utils/image";
+import { getImageUrl, optimizeImage } from "../../utils/image";
 
 const emptyProduct: ProductRecord = {
   id: "",
@@ -91,9 +91,10 @@ export default function AdminProductForm() {
       if (!variant) return;
 
       const results = await Promise.all(
-        files.map((file) => {
+        files.map(async (file) => {
+          const optimizedFile = await optimizeImage(file);
           const form = new FormData();
-          form.append("image", file);
+          form.append("image", optimizedFile);
           form.append("variant_id", variant.id || variant.name);
           return api.post(`/admin/products/${productId}/images/`, form);
         })
@@ -150,7 +151,10 @@ export default function AdminProductForm() {
 
     setUploading(true);
     try {
-      const results = await Promise.all(files.map((file) => uploadProductImage(productId, file)));
+      const results = await Promise.all(files.map(async (file) => {
+        const optimizedFile = await optimizeImage(file);
+        return uploadProductImage(productId, optimizedFile as File);
+      }));
       const newImageUrls = results.map((res: any) => res.url);
       setForm((current) => ({ ...current, images: [...current.images, ...newImageUrls] }));
     } catch (reason) {
