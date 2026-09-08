@@ -37,7 +37,7 @@ export default function AdminDashboard() {
 
   const [now] = useState(() => Date.now());
   const recentOrders = useMemo(() => [...orders].sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 5), [orders]);
-  const lowStockProducts = useMemo(() => products.filter((product) => (product.stock ?? 0) <= settings.lowStockThreshold).slice(0, 4), [products, settings.lowStockThreshold]);
+  const lowStockProductsList = useMemo(() => products.filter((product) => (product.stock ?? 0) <= settings.lowStockThreshold).slice(0, 4), [products, settings.lowStockThreshold]);
 
   const sales = useMemo(() => {
     const cutoff = now - rangeDays[range] * 86400000;
@@ -78,96 +78,73 @@ export default function AdminDashboard() {
         <p className="font-voice italic text-midnight/50 text-lg">Managing the elegance of Solenne.</p>
       </div>
 
-      {/* Action Required Section */}
-      {actionsRequired.length > 0 && (
-        <section className="animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-            </span>
-            <h2 className="font-sans text-[11px] tracking-[0.25em] uppercase text-midnight/60 font-bold">Action Required</h2>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {actionsRequired.map((action) => (
-              <Link
-                key={action.label}
-                to={action.link}
-                className={`flex items-center justify-between p-5 rounded-2xl border transition-all hover:shadow-md ${action.color}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-white/50">{action.icon}</div>
-                  <div>
-                    <div className="text-2xl font-display leading-none">{action.count}</div>
-                    <div className="font-sans text-[10px] tracking-widest uppercase mt-1 opacity-70">{action.label}</div>
-                  </div>
-                </div>
-                <div className="text-xl">→</div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Main Stats */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Total Revenue", value: formatCurrency(metrics?.totalRevenue ?? 0), trend: "+12%" },
-          { label: "Orders", value: String(metrics?.totalOrders ?? 0), trend: "+5%" },
-          { label: "Customers", value: String(metrics?.totalCustomers ?? 0), trend: "+8%" },
-          { label: "Avg. Order Value", value: formatCurrency((metrics?.totalRevenue ?? 0) / (metrics?.totalOrders || 1)), trend: "-2%" },
-        ].map((item) => (
-          <div key={item.label} className="bg-white rounded-3xl border border-line p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/40 mb-4">{item.label}</div>
-            <div className="flex items-end justify-between">
-              <div className="font-display text-3xl text-midnight">{item.value}</div>
-              {/* <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.trend.startsWith('+') ? 'text-green-600 bg-green-50' : 'text-rose-600 bg-rose-50'}`}>{item.trend}</div> */}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
-        {/* Sales Chart Placeholder */}
-        <section className="bg-white rounded-[32px] border border-line p-8 shadow-sm">
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-display text-2xl text-midnight">Sales Performance</h2>
-              <p className="text-xs text-midnight/40 mt-1 font-sans uppercase tracking-wider">Revenue distribution over time</p>
-            </div>
-            <div className="flex gap-1 bg-ivory-warm/40 p-1 rounded-full">
-              {Object.keys(rangeDays).map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setRange(key as keyof typeof rangeDays)}
-                  className={`rounded-full px-4 py-1.5 font-sans text-[9px] tracking-[0.15em] uppercase transition-all ${
-                    range === key ? "bg-midnight text-ivory shadow-sm" : "text-midnight/50 hover:text-midnight"
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex h-64 items-end gap-3 px-2">
-            {sales.map((value, index) => (
-              <div key={`${range}-${index}`} className="group relative flex-1 flex flex-col items-center gap-3">
-                <div
-                  className="w-full rounded-t-xl bg-gradient-to-t from-gold/40 via-gold/80 to-gold transition-all duration-500 group-hover:via-midnight/80 group-hover:to-midnight"
-                  style={{ height: `${Math.max(4, Math.min(100, value / Math.max(...sales, 1) * 100))}%` }}
-                >
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-midnight text-ivory px-2 py-1 rounded text-[9px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {formatCurrency(value)}
-                  </div>
-                </div>
-                <div className="font-sans text-[8px] uppercase tracking-tighter text-midnight/30">{index + 1}</div>
+      <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-8">
+          {actionsRequired.length > 0 && (
+            <section className="animate-in fade-in slide-in-from-top-4 duration-700">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <h2 className="font-sans text-[11px] tracking-[0.25em] uppercase text-midnight/60 font-bold">Action Required</h2>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {actionsRequired.map((action) => (
+                  <Link
+                    key={action.label}
+                    to={action.link}
+                    className={`flex items-center justify-between p-5 rounded-2xl border transition-all hover:shadow-md ${action.color}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-xl bg-white/50">{action.icon}</div>
+                      <div>
+                        <div className="text-2xl font-display leading-none">{action.count}</div>
+                        <div className="font-sans text-[10px] tracking-widest uppercase mt-1 opacity-70">{action.label}</div>
+                      </div>
+                    </div>
+                    <div className="text-xl">→</div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
-        {/* Quick Lists */}
+          {/* Quick Actions */}
+          <section className="bg-white rounded-[32px] border border-line p-8 shadow-sm">
+            <h2 className="font-display text-xl text-midnight mb-6">Quick Actions</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <Link to="/admin/cms" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <div className="w-10 h-10 rounded-full bg-midnight/5 flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-midnight" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>
+                </div>
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight font-bold">Add Section</span>
+              </Link>
+              <Link to="/admin/media" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <div className="w-10 h-10 rounded-full bg-midnight/5 flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-midnight" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight font-bold">Upload Media</span>
+              </Link>
+              <Link to="/admin/products/new" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <div className="w-10 h-10 rounded-full bg-midnight/5 flex items-center justify-center mb-3">
+                  <svg className="w-5 h-5 text-midnight" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                </div>
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight font-bold">New Product</span>
+              </Link>
+              <Link to="/admin/collections" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight/60 font-medium">Manage Collections</span>
+              </Link>
+              <Link to="/admin/categories" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight/60 font-medium">Manage Categories</span>
+              </Link>
+              <a href="/" target="_blank" className="flex flex-col items-center justify-center p-6 rounded-2xl border border-line/50 hover:bg-ivory-warm/20 hover:border-gold/30 transition-all text-center">
+                <span className="font-sans text-[10px] tracking-widest uppercase text-midnight/60 font-medium">Preview Site</span>
+              </a>
+            </div>
+          </section>
+        </div>
+
         <div className="space-y-8">
            {/* Recent Inquiries */}
            <section className="bg-midnight text-ivory rounded-[32px] p-8 shadow-xl">
@@ -195,7 +172,7 @@ export default function AdminDashboard() {
           <section className="bg-white rounded-[32px] border border-line p-8 shadow-sm">
             <h2 className="font-display text-xl text-midnight mb-6">Low Inventory</h2>
             <div className="space-y-4">
-              {lowStockProducts.map((product) => (
+              {lowStockProductsList.map((product) => (
                 <div key={product.id} className="flex items-center gap-4 p-3 rounded-2xl bg-ivory-warm/30 border border-line/50">
                   <img src={getImageUrl(product.images[0])} alt="" className="w-10 h-10 rounded-lg object-cover" />
                   <div className="flex-1 min-w-0">
@@ -214,6 +191,62 @@ export default function AdminDashboard() {
           </section>
         </div>
       </div>
+
+      {/* Main Stats */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Total Revenue", value: formatCurrency(metrics?.totalRevenue ?? 0), trend: "+12%" },
+          { label: "Orders", value: String(metrics?.totalOrders ?? 0), trend: "+5%" },
+          { label: "Customers", value: String(metrics?.totalCustomers ?? 0), trend: "+8%" },
+          { label: "Avg. Order Value", value: formatCurrency((metrics?.totalRevenue ?? 0) / (metrics?.totalOrders || 1)), trend: "-2%" },
+        ].map((item) => (
+          <div key={item.label} className="bg-white rounded-3xl border border-line p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className="font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/40 mb-4">{item.label}</div>
+            <div className="flex items-end justify-between">
+              <div className="font-display text-3xl text-midnight">{item.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Sales Chart Placeholder */}
+      <section className="bg-white rounded-[32px] border border-line p-8 shadow-sm">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-display text-2xl text-midnight">Sales Performance</h2>
+            <p className="text-xs text-midnight/40 mt-1 font-sans uppercase tracking-wider">Revenue distribution over time</p>
+          </div>
+          <div className="flex gap-1 bg-ivory-warm/40 p-1 rounded-full">
+            {Object.keys(rangeDays).map((key) => (
+              <button
+                key={key}
+                onClick={() => setRange(key as keyof typeof rangeDays)}
+                className={`rounded-full px-4 py-1.5 font-sans text-[9px] tracking-[0.15em] uppercase transition-all ${
+                  range === key ? "bg-midnight text-ivory shadow-sm" : "text-midnight/50 hover:text-midnight"
+                }`}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex h-64 items-end gap-3 px-2">
+          {sales.map((value, index) => (
+            <div key={`${range}-${index}`} className="group relative flex-1 flex flex-col items-center gap-3">
+              <div
+                className="w-full rounded-t-xl bg-gradient-to-t from-gold/40 via-gold/80 to-gold transition-all duration-500 group-hover:via-midnight/80 group-hover:to-midnight"
+                style={{ height: `${Math.max(4, Math.min(100, (value / (Math.max(...sales, 1) || 1)) * 100))}%` }}
+              >
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-midnight text-ivory px-2 py-1 rounded text-[9px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  {formatCurrency(value)}
+                </div>
+              </div>
+              <div className="font-sans text-[8px] uppercase tracking-tighter text-midnight/30">{index + 1}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Recent Orders Table */}
       <section className="bg-white rounded-[32px] border border-line p-8 shadow-sm overflow-hidden">
@@ -276,4 +309,3 @@ export default function AdminDashboard() {
 function IconAlertOrders() { return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>; }
 function IconAlertInquiries() { return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>; }
 function IconAlertStock() { return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>; }
-

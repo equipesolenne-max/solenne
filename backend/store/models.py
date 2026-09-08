@@ -135,18 +135,27 @@ class HomeSection(models.Model):
         ("lookbook", "Lookbook"),
         ("custom", "Custom"),
     ]
+    PLATFORM_CHOICES = [
+        ("both", "Both"),
+        ("web", "Web Only"),
+        ("mobile", "Mobile Only"),
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     section_type = models.CharField(max_length=40, choices=SECTION_TYPES)
     title = models.CharField(max_length=200, blank=True)
     subtitle = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
     media = models.ForeignKey(Media, null=True, blank=True, on_delete=models.SET_NULL, related_name="home_sections")
+    mobile_media = models.ForeignKey(Media, null=True, blank=True, on_delete=models.SET_NULL, related_name="home_sections_mobile")
     link = models.CharField(max_length=300, blank=True)
     button_text = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=True)
     position = models.PositiveIntegerField(default=0)
     configuration = models.JSONField(default=dict, blank=True)
     collection = models.ForeignKey(Collection, null=True, blank=True, on_delete=models.SET_NULL)
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default="both")
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

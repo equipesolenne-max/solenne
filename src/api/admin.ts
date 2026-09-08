@@ -67,8 +67,27 @@ export async function getSettings() { return api.get<StoreSettings>("/admin/sett
 export async function updateSettings(value: StoreSettings) { return api.put<StoreSettings>("/admin/settings/store/", value); }
 export async function updateStock(id: string, stock: number) { return api.post<ProductRecord>(`/admin/products/${id}/stock/`, { stock }); }
 export async function updateVariant(productId: string, variant: { name: string; stock?: number; hex?: string }) { return api.post(`/admin/products/${productId}/variants/`, variant); }
-export async function uploadProductImage(id: string, file: File) { const form = new FormData(); form.append("image", file); return api.post(`/admin/products/${id}/images/`, form); }
+export async function uploadProductImage(id: string, file: File, variantId?: string | number) {
+  const form = new FormData();
+  form.append("image", file);
+  if (variantId) form.append("variant_id", String(variantId));
+  return api.post<{ id: string; url: string }>(`/admin/products/${id}/images/`, form);
+}
 export async function deleteProductImage(productId: string, imageId: string) { return api.delete(`/admin/products/${productId}/images/${imageId}/`); }
+
+export async function uploadMedia(file: File) {
+  const form = new FormData();
+  form.append("image", file);
+  return api.post<{ id: string; url: string }>("/admin/media/", form);
+}
+
+export async function reorderSections(ids: string[]) {
+  return api.post("/admin/home-sections/reorder/", { order: ids });
+}
+
+export async function addSectionItems(sectionId: string, type: "product" | "category" | "media", ids: (string | number)[]) {
+  return api.post(`/admin/home-sections/${sectionId}/items/`, { type, ids });
+}
 
 // Admin Notifications
 export async function getAdminNotifications() {

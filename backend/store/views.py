@@ -1,4 +1,5 @@
 from django.db.models import Q, Prefetch
+from django.utils import timezone
 from rest_framework import generics, serializers, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action, api_view, permission_classes
@@ -51,6 +52,12 @@ class RegisterView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
+@api_view(["GET", "HEAD"])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({"status": "ok"}, status=200)
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def login_view(request):
@@ -62,6 +69,12 @@ def login_view(request):
         "access": str(refresh.access_token), 
         "refresh": str(refresh)
     })
+
+
+@api_view(["GET", "HEAD"])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({"status": "ok"}, status=200)
 
 
 @api_view(["POST"])
@@ -273,6 +286,12 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({"detail": "Notifications marked as read."})
 
 
+@api_view(["GET", "HEAD"])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({"status": "ok"}, status=200)
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def newsletter_view(request):
@@ -285,7 +304,16 @@ def newsletter_view(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def home_view(request):
-    sections = HomeSection.objects.filter(is_active=True).select_related("media", "collection").defer("media__content", "collection__media__content").prefetch_related(
+    now = timezone.now()
+    sections = HomeSection.objects.filter(
+        is_active=True
+    ).filter(
+        Q(start_date__isnull=True) | Q(start_date__lte=now)
+    ).filter(
+        Q(end_date__isnull=True) | Q(end_date__gte=now)
+    ).select_related("media", "mobile_media", "collection").defer(
+        "media__content", "mobile_media__content", "collection__media__content"
+    ).prefetch_related(
         Prefetch("section_media", queryset=HomeSectionMedia.objects.select_related("media").defer("media__content")),
         Prefetch("section_products", queryset=HomeSectionProduct.objects.select_related("product").prefetch_related(
             Prefetch("product__product_media", queryset=ProductMedia.objects.select_related("media").defer("media__content")),

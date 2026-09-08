@@ -123,6 +123,8 @@ export interface HomeSectionRecord {
   description?: string;
   media?: string;
   media_url?: string;
+  mobile_media?: string;
+  mobile_media_url?: string;
   link?: string;
   button_text?: string;
   is_active: boolean;
@@ -133,6 +135,9 @@ export interface HomeSectionRecord {
   gallery?: Array<{ id: string; url: string; position: number }>;
   products?: ProductRecord[];
   categories?: CategoryRecord[];
+  platform: "both" | "web" | "mobile";
+  start_date?: string;
+  end_date?: string;
   created_at?: string;
   updated_at?: string;
 }

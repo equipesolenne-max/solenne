@@ -133,18 +133,25 @@ class HomeSectionSerializer(serializers.ModelSerializer):
     products = serializers.SerializerMethodField()
     collection_detail = CollectionSerializer(source="collection", read_only=True)
     categories = serializers.SerializerMethodField()
+    media_url = serializers.SerializerMethodField()
+    mobile_media_url = serializers.SerializerMethodField()
 
     class Meta:
         model = HomeSection
         fields = (
             "id", "section_type", "title", "subtitle", "description", 
-            "media", "media_url", "link", "button_text", "is_active", 
+            "media", "media_url", "mobile_media", "mobile_media_url",
+            "link", "button_text", "is_active", 
             "position", "configuration", "collection", "collection_detail",
-            "gallery", "products", "categories", "created_at", "updated_at"
+            "gallery", "products", "categories", "created_at", "updated_at",
+            "platform", "start_date", "end_date"
         )
 
     def get_media_url(self, obj):
         return get_media_url(obj.media, self.context.get("request"))
+
+    def get_mobile_media_url(self, obj):
+        return get_media_url(obj.mobile_media, self.context.get("request"))
 
     def get_gallery(self, obj):
         request = self.context.get("request")

@@ -46,6 +46,7 @@ const AdminInventory = lazy(() => import("./pages/admin/AdminInventory"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminCMS = lazy(() => import("./pages/admin/AdminCMS"));
+const AdminMedia = lazy(() => import("./pages/admin/AdminMedia"));
 const NotFoundAdmin = lazy(() => import("./pages/admin/NotFoundAdmin"));
 
 export default function App() {
@@ -141,6 +142,7 @@ export default function App() {
               <Route path="inventory" element={<AdminInventory />} />
               <Route path="messages" element={<AdminMessages />} />
               <Route path="cms" element={<AdminCMS />} />
+              <Route path="media" element={<AdminMedia />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Route>

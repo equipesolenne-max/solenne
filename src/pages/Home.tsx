@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
-import ProductCardSkeleton from "../components/ProductCardSkeleton";
 import SectionLabel from "../components/SectionLabel";
 import PackagingSection from "../components/PackagingSection";
 import { useHome } from "../hooks/useHome";
@@ -10,7 +9,7 @@ import type { HomeSectionRecord } from "../types/admin";
 import { toProduct, toCollection } from "../services/catalog";
 
 export default function Home() {
-  const { sections, loading, error } = useHome();
+  const { sections, loading } = useHome();
   const [email, setEmail] = useState("");
   const [newsletterMessage, setNewsletterMessage] = useState("");
   const [newsletterError, setNewsletterError] = useState("");

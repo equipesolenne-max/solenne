@@ -170,7 +170,7 @@ class AdminCollectionViewSet(viewsets.ModelViewSet):
 
 class AdminHomeSectionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
-    queryset = HomeSection.objects.select_related("media", "collection").defer("media__content", "collection__media__content").prefetch_related(
+    queryset = HomeSection.objects.select_related("media", "mobile_media", "collection").defer("media__content", "mobile_media__content", "collection__media__content").prefetch_related(
         Prefetch("section_media", queryset=HomeSectionMedia.objects.select_related("media").defer("media__content")),
         Prefetch("section_products", queryset=HomeSectionProduct.objects.select_related("product")),
         Prefetch("section_categories", queryset=HomeSectionCategory.objects.select_related("category__media").defer("category__media__content"))

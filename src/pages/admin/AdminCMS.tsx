@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
 import { useAdminCollection } from "../../hooks/useAdminCollection";
-import { createAdmin, deleteAdmin, updateAdmin } from "../../api/admin";
-import { api } from "../../api/client";
+import { createAdmin, deleteAdmin, updateAdmin, uploadMedia, reorderSections, addSectionItems } from "../../api/admin";
 import type { HomeSectionRecord, HomeSectionType, ProductRecord, CategoryRecord, CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
-import { getImageUrl, optimizeImage } from "../../utils/image";
+import { optimizeImage } from "../../utils/image";
 
 const SECTION_TYPES: Record<HomeSectionType, string> = {
   hero: "Hero Slide",
@@ -27,6 +26,7 @@ const emptySection: Partial<HomeSectionRecord> = {
   is_active: true,
   position: 0,
   configuration: {},
+  platform: "both",
 };
 
 export default function AdminCMS() {
@@ -58,15 +58,9 @@ export default function AdminCMS() {
 
       // Update related items if necessary
       if (form.section_type === "featured_products") {
-          await api.post(`/admin/home-sections/${savedSection.id}/items/`, {
-              type: "product",
-              ids: (form.products || []).map(p => p.id)
-          });
+          await addSectionItems(savedSection.id, "product", (form.products || []).map(p => p.id));
       } else if (form.section_type === "categories") {
-          await api.post(`/admin/home-sections/${savedSection.id}/items/`, {
-              type: "category",
-              ids: (form.categories || []).map(c => c.id)
-          });
+          await addSectionItems(savedSection.id, "category", (form.categories || []).map(c => c.id));
       }
 
       await refresh();
@@ -105,7 +99,7 @@ export default function AdminCMS() {
     [newOrder[idx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[idx]];
 
     try {
-      await api.post("/admin/home-sections/reorder/", { order: newOrder.map((s) => s.id) });
+      await reorderSections(newOrder.map((s) => s.id));
       await refresh();
     } catch (err) {
       setActionError("Failed to reorder");
@@ -139,12 +133,31 @@ export default function AdminCMS() {
     formData.append("image", optimizedFile);
 
     try {
-        const res: any = await api.post("/admin/media/", formData);
+        const res = await uploadMedia(optimizedFile as File);
         await updateAdmin("home-sections", editingId, { media: res.id });
         await refresh();
         setForm(prev => ({ ...prev, media: res.id, media_url: res.url }));
     } catch (err) {
         setActionError("Failed to upload image");
+    } finally {
+        setUploading(false);
+    }
+  }
+
+  async function handleMobileMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !editingId) return;
+
+    setUploading(true);
+    const optimizedFile = await optimizeImage(file);
+
+    try {
+        const res = await uploadMedia(optimizedFile as File);
+        await updateAdmin("home-sections", editingId, { mobile_media: res.id });
+        await refresh();
+        setForm(prev => ({ ...prev, mobile_media: res.id, mobile_media_url: res.url }));
+    } catch (err) {
+        setActionError("Failed to upload mobile image");
     } finally {
         setUploading(false);
     }
@@ -158,18 +171,13 @@ export default function AdminCMS() {
     try {
         const results = await Promise.all(files.map(async (file) => {
             const optimizedFile = await optimizeImage(file);
-            const formData = new FormData();
-            formData.append("image", optimizedFile);
-            return api.post("/admin/media/", formData);
+            return uploadMedia(optimizedFile as File);
         }));
 
-        const newMediaIds = results.map((res: any) => res.id);
+        const newMediaIds = results.map((res) => res.id);
         const currentIds = (form.gallery || []).map(g => g.id);
 
-        await api.post(`/admin/home-sections/${editingId}/items/`, {
-            type: "media",
-            ids: [...currentIds, ...newMediaIds]
-        });
+        await addSectionItems(editingId, "media", [...currentIds, ...newMediaIds]);
 
         await refresh();
         // The refresh will update the form if we reopen or if we use the data from sections
@@ -239,6 +247,21 @@ export default function AdminCMS() {
               <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => toggleStatus(section)} className="text-[10px] font-sans uppercase tracking-widest text-midnight/40 hover:text-midnight">
                   {section.is_active ? "Disable" : "Enable"}
+                </button>
+                <button
+                  onClick={async () => {
+                    const { id, ...duplicateData } = section;
+                    try {
+                      await createAdmin("home-sections", { ...duplicateData, title: `${section.title} (Copy)`, position: sections.length });
+                      await refresh();
+                    } catch (err) {
+                      setActionError("Failed to duplicate section");
+                    }
+                  }}
+                  className="p-2 text-midnight/40 hover:text-gold"
+                  title="Duplicate"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
                 </button>
                 <button onClick={() => openModal(section)} className="p-2 text-midnight/40 hover:text-midnight">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
@@ -329,6 +352,39 @@ export default function AdminCMS() {
                   />
                 </div>
 
+                <div>
+                  <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-2">Platform</label>
+                  <select
+                    value={form.platform}
+                    onChange={(e) => setForm({ ...form, platform: e.target.value as any })}
+                    className="w-full bg-white border border-line rounded-2xl px-5 py-3 text-xs outline-none focus:ring-1 focus:ring-gold/30"
+                  >
+                    <option value="both">Both</option>
+                    <option value="web">Web Only</option>
+                    <option value="mobile">Mobile Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-2">Start Date</label>
+                  <input
+                    type="datetime-local"
+                    value={form.start_date ? form.start_date.substring(0, 16) : ""}
+                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    className="w-full bg-white border border-line rounded-2xl px-5 py-3 text-xs outline-none focus:ring-1 focus:ring-gold/30"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-2">End Date</label>
+                  <input
+                    type="datetime-local"
+                    value={form.end_date ? form.end_date.substring(0, 16) : ""}
+                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                    className="w-full bg-white border border-line rounded-2xl px-5 py-3 text-xs outline-none focus:ring-1 focus:ring-gold/30"
+                  />
+                </div>
+
                 {(form.section_type === "featured_products") && (
                   <div className="md:col-span-2">
                     <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-2">Select Products</label>
@@ -401,10 +457,7 @@ export default function AdminCMS() {
                             onClick={async () => {
                                 if (!editingId) return;
                                 const nextIds = form.gallery?.filter(x => x.id !== img.id).map(g => g.id) || [];
-                                await api.post(`/admin/home-sections/${editingId}/items/`, {
-                                    type: "media",
-                                    ids: nextIds
-                                });
+                                await addSectionItems(editingId, "media", nextIds);
                                 await refresh();
                             }}
                             className="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-0.5"
@@ -424,23 +477,43 @@ export default function AdminCMS() {
               </div>
 
               {editingId && (
-                <div className="p-6 bg-ivory-warm/30 rounded-3xl border border-line/50">
-                  <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60 mb-4">Main Image</label>
-                  <div className="flex items-center gap-6">
-                    <div className="h-32 w-48 overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center">
+                <div className="grid gap-6 md:grid-cols-2 p-6 bg-ivory-warm/30 rounded-3xl border border-line/50">
+                  <div className="space-y-4">
+                    <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60">Desktop Image</label>
+                    <div className="h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center">
                       {form.media_url ? (
                         <img src={form.media_url} className="h-full w-full object-cover" alt="" />
                       ) : (
-                        <span className="text-[10px] text-midnight/20 italic">No image</span>
+                        <span className="text-[10px] text-midnight/20 italic">No desktop image</span>
                       )}
                     </div>
-                    <div className="flex-1 space-y-3">
+                    <div className="space-y-3">
                       <input type="file" id="media-upload" hidden onChange={handleMediaUpload} />
                       <label htmlFor="media-upload" className="inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all">
-                        {uploading ? "Uploading..." : "Upload New Image"}
+                        {uploading ? "Uploading..." : "Upload Desktop Image"}
                       </label>
-                      <p className="text-[9px] text-midnight/40 leading-relaxed">Recommended size: 2000x1200 for Hero, 1000x1250 for Editorial.</p>
                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block font-sans text-[10px] tracking-[0.2em] uppercase text-midnight/60">Mobile Image</label>
+                    <div className="h-32 w-full overflow-hidden rounded-2xl bg-white border border-line flex items-center justify-center">
+                      {form.mobile_media_url ? (
+                        <img src={form.mobile_media_url} className="h-full w-full object-cover" alt="" />
+                      ) : (
+                        <span className="text-[10px] text-midnight/20 italic">No mobile image</span>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <input type="file" id="mobile-media-upload" hidden onChange={handleMobileMediaUpload} />
+                      <label htmlFor="mobile-media-upload" className="inline-flex cursor-pointer bg-midnight text-ivory px-6 py-2 rounded-full text-[10px] uppercase tracking-widest hover:bg-midnight-deep transition-all">
+                        {uploading ? "Uploading..." : "Upload Mobile Image"}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <p className="text-[9px] text-midnight/40 leading-relaxed text-center">Recommended sizes: Desktop 2000x1200, Mobile 800x1200.</p>
                   </div>
                 </div>
               )}

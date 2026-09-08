@@ -40,7 +40,7 @@ export async function optimizeImage(file: File): Promise<File | Blob> {
     return file;
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       const MAX_WIDTH = 1920;

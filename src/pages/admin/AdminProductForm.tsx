@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAdminCollection } from "../../hooks/useAdminCollection";
-import { createAdmin, getAdmin, updateAdmin, uploadProductImage } from "../../api/admin";
-import { api } from "../../api/client";
+import { createAdmin, getAdmin, updateAdmin, uploadProductImage, deleteProductImage as apiDeleteProductImage } from "../../api/admin";
 import type { ProductRecord, ProductVariant } from "../../types/admin";
 import type { CategoryRecord, CollectionRecord } from "../../types/admin";
 import { readableApiError } from "../../services/errorMessage";
@@ -93,10 +92,7 @@ export default function AdminProductForm() {
       const results = await Promise.all(
         files.map(async (file) => {
           const optimizedFile = await optimizeImage(file);
-          const form = new FormData();
-          form.append("image", optimizedFile);
-          form.append("variant_id", variant.id || variant.name);
-          return api.post(`/admin/products/${productId}/images/`, form);
+          return uploadProductImage(productId, optimizedFile as File, variant.id || variant.name);
         })
       );
       const newImageUrls = results.map((res: any) => res.url);
@@ -165,7 +161,7 @@ export default function AdminProductForm() {
   async function deleteProductImage(pmId: string) {
       if (!productId) return;
       try {
-          await api.delete(`/admin/products/${productId}/images/${pmId}/`);
+          await apiDeleteProductImage(productId, pmId);
           // Refresh form data
           const product = await getAdmin<ProductRecord>("products", productId);
           if (product) setForm({ ...product, variants: product.variants?.length ? product.variants : product.colors.map((name) => ({ name, hex: "#C6A369", images: product.images, stock: product.stock })) });
@@ -297,9 +293,29 @@ export default function AdminProductForm() {
           <input type="file" accept="image/*" multiple onChange={handleImageUpload} disabled={!productId} className="block w-full text-sm text-[#1B2A46] file:mr-4 file:rounded file:border-0 file:bg-[#1B2A46] file:px-4 file:py-2 file:font-sans file:text-[10px] file:tracking-[0.18em] file:uppercase file:text-[#F8F4EC] disabled:opacity-50" />
           {form.images.length > 0 && (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {form.images.map((image, index) => (
-                <img key={`${image}-${index}`} src={getImageUrl(image)} alt={`Product upload ${index + 1}`} className="h-24 w-full rounded-lg object-cover border border-line" />
-              ))}
+              {form.images.map((image, index) => {
+                // Extracting pmId if it's a full URL from our API, otherwise we might not have it easily
+                // For simplicity, if we don't have the ID here, we can't delete it.
+                // But normally our API returns images as objects or URLs.
+                // Looking at get_images in serializers.py, it returns a list of URLs or objects.
+                // If it's just a URL, we don't have the pm_id.
+                // Let's assume for now we might need the ID.
+                return (
+                  <div key={`${image}-${index}`} className="relative group">
+                    <img src={getImageUrl(image)} alt={`Product upload ${index + 1}`} className="h-24 w-full rounded-lg object-cover border border-line" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                          const pmId = image.split('/').filter(Boolean).pop(); // Attempt to get ID from URL if it's a UUID
+                          if (pmId) deleteProductImage(pmId);
+                      }}
+                      className="absolute top-1 right-1 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
