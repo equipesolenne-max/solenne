@@ -73,7 +73,16 @@ class OrderFlowTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
         image_buffer = BytesIO()
         Image.new("RGB", (2, 2), "white").save(image_buffer, format="PNG")
-        image = SimpleUploadedFile("silk.png", image_buffer.getvalue(), content_type="image/png")
+        image_content = image_buffer.getvalue()
+        image = SimpleUploadedFile("silk.png", image_content, content_type="image/png")
         response = self.client.post(f"/api/admin/products/{self.product.id}/images/", {"image": image}, format="multipart")
         self.assertEqual(response.status_code, 201)
         self.assertEqual(self.product.product_media.count(), 1)
+
+        # Test MediaView
+        media_id = self.product.product_media.first().media.id
+        self.client.credentials() # Clear credentials to test public access
+        media_response = self.client.get(f"/api/media/{media_id}/")
+        self.assertEqual(media_response.status_code, 200)
+        self.assertEqual(media_response["Content-Type"], "image/png")
+        self.assertEqual(media_response.content, image_content)

@@ -7,6 +7,7 @@ import { useHome } from "../hooks/useHome";
 import { api } from "../api/client";
 import type { HomeSectionRecord } from "../types/admin";
 import { toProduct, toCollection } from "../services/catalog";
+import { getImageUrl } from "../utils/image";
 
 export default function Home() {
   const { sections, loading } = useHome();
@@ -88,7 +89,7 @@ function SectionRenderer({ section, index }: { section: HomeSectionRecord; index
           <div className="relative h-[86vh] min-h-[560px] overflow-hidden bg-ivory-warm">
             {section.media_url && (
               <img
-                src={section.media_url}
+                src={getImageUrl(section.media_url)}
                 alt={section.title}
                 loading="eager"
                 // @ts-expect-error fetchpriority
@@ -143,7 +144,7 @@ function SectionRenderer({ section, index }: { section: HomeSectionRecord; index
               </div>
               <Link to={collection ? `/collections/${collection.id}` : "/collections"} className="order-1 md:order-2 block overflow-hidden bg-ivory-warm">
                 <img
-                  src={section.media_url || collection?.image || "https://placehold.co/900x1100/F3EDE1/1B2A46?text=Solenne"}
+                  src={getImageUrl(section.media_url || collection?.image)}
                   alt={section.title}
                   loading="lazy"
                   className="w-full aspect-[4/5] object-cover"
@@ -184,7 +185,7 @@ function SectionRenderer({ section, index }: { section: HomeSectionRecord; index
           <div className="max-w-page mx-auto px-6 md:px-10 py-24 md:py-28 grid md:grid-cols-2 gap-14 items-center">
             {section.media_url && (
               <img
-                src={section.media_url}
+                src={getImageUrl(section.media_url)}
                 alt={section.title}
                 loading="lazy"
                 className="w-full aspect-[4/5] object-cover order-1"
@@ -265,7 +266,7 @@ function SectionRenderer({ section, index }: { section: HomeSectionRecord; index
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {section.gallery?.map((img) => (
                         <div key={img.id} className="aspect-[3/4] overflow-hidden bg-ivory-warm">
-                            <img src={img.url} className="h-full w-full object-cover transition-transform duration-1000 hover:scale-110" alt="" />
+                            <img src={getImageUrl(img.url)} className="h-full w-full object-cover transition-transform duration-1000 hover:scale-110" alt="" />
                         </div>
                     ))}
                 </div>

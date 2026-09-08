@@ -30,7 +30,12 @@ class MediaView(generics.GenericAPIView):
     def get(self, request, pk):
         try:
             media = Media.objects.get(pk=pk)
-            response = HttpResponse(media.content, content_type=media.content_type)
+            # Ensure content is treated as bytes for the response
+            content = media.content
+            if isinstance(content, memoryview):
+                content = content.tobytes()
+            
+            response = HttpResponse(content, content_type=media.content_type)
             response['Cache-Control'] = 'public, max-age=31536000'
             return response
         except Media.DoesNotExist:

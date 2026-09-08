@@ -15,19 +15,15 @@ export function getImageUrl(path: string | undefined | null): string {
     return path;
   }
 
-  // If it's a relative path starting with /api/media/, prepend the origin
-  if (path.startsWith("/api/media/")) {
-    try {
-      const origin = new URL(API_BASE_URL).origin;
-      return `${origin}${path}`;
-    } catch {
-      // Fallback if URL parsing fails
-      return path;
-    }
+  // If it's a relative path, prepend the origin of the API_BASE_URL
+  try {
+    const origin = new URL(API_BASE_URL).origin;
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${origin}${normalizedPath}`;
+  } catch {
+    // Fallback if URL parsing fails
+    return path;
   }
-
-  // Fallback for any other unexpected cases
-  return path;
 }
 
 /**

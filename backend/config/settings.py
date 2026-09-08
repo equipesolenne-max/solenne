@@ -285,6 +285,8 @@ SECURE_PROXY_SSL_HEADER = (
     "https",
 )
 
+USE_X_FORWARDED_HOST = True
+
 
 # Secure cookies only when running in production
 if not DEBUG:

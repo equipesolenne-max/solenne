@@ -13,10 +13,7 @@ from .models import (
 def get_media_url(media, request):
     if not media:
         return None
-    url = reverse("media", args=[media.id])
-    if request:
-        return request.build_absolute_uri(url)
-    return url
+    return reverse("media", args=[media.id])
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -128,7 +125,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class HomeSectionSerializer(serializers.ModelSerializer):
-    media_url = serializers.SerializerMethodField()
     gallery = serializers.SerializerMethodField()
     products = serializers.SerializerMethodField()
     collection_detail = CollectionSerializer(source="collection", read_only=True)
