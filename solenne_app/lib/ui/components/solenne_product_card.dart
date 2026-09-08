@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../theme/solenne_theme.dart';
+import '../../models/product_model.dart';
 import '../../core/utils/url_utils.dart';
 import 'solenne_price.dart';
 

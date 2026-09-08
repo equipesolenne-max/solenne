@@ -112,3 +112,27 @@ export interface StoreSettings {
   };
   storeStatus: "open" | "maintenance";
 }
+
+export type HomeSectionType = "hero" | "featured_products" | "featured_collection" | "categories" | "banner" | "editorial" | "lookbook" | "custom";
+
+export interface HomeSectionRecord {
+  id: string;
+  section_type: HomeSectionType;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  media?: string;
+  media_url?: string;
+  link?: string;
+  button_text?: string;
+  is_active: boolean;
+  position: number;
+  configuration?: any;
+  collection?: string;
+  collection_detail?: CollectionRecord;
+  gallery?: Array<{ id: string; url: string; position: number }>;
+  products?: ProductRecord[];
+  categories?: CategoryRecord[];
+  created_at?: string;
+  updated_at?: string;
+}

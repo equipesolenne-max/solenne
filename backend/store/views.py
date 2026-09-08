@@ -8,13 +8,13 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.http import HttpResponse, Http404
 from .models import (
     Address, Cart, CartItem, Category, Collection, 
-    ContactMessage, ContactMessageReply, Media, 
+    ContactMessage, ContactMessageReply, HomeSection, Media, 
     Notification, Order, Product, Wishlist, User
 )
 from .serializers import (
     AddressSerializer, CartItemSerializer, CartSerializer, 
     CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
-    ContactMessageReplySerializer, LoginSerializer, 
+    ContactMessageReplySerializer, HomeSectionSerializer, LoginSerializer,
     NewsletterSubscriberSerializer, NotificationSerializer, 
     OrderSerializer, ProductSerializer, RegisterSerializer, UserSerializer
 )
@@ -275,6 +275,21 @@ def newsletter_view(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response({"detail": "Subscribed."}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def home_view(request):
+    sections = HomeSection.objects.filter(is_active=True).prefetch_related(
+        "section_media__media",
+        "section_products__product__product_media__media",
+        "section_products__product__variants",
+        "section_categories__category__media",
+        "collection__media",
+        "media"
+    )
+    serializer = HomeSectionSerializer(sections, many=True, context={"request": request})
+    return Response(serializer.data)
 
 
 @api_view(["POST"])

@@ -124,6 +124,66 @@ class ProductMedia(models.Model):
         verbose_name_plural = "Product Media"
 
 
+class HomeSection(models.Model):
+    SECTION_TYPES = [
+        ("hero", "Hero"),
+        ("featured_products", "Featured Products"),
+        ("featured_collection", "Featured Collection"),
+        ("categories", "Categories"),
+        ("banner", "Banner"),
+        ("editorial", "Editorial"),
+        ("lookbook", "Lookbook"),
+        ("custom", "Custom"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    section_type = models.CharField(max_length=40, choices=SECTION_TYPES)
+    title = models.CharField(max_length=200, blank=True)
+    subtitle = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    media = models.ForeignKey(Media, null=True, blank=True, on_delete=models.SET_NULL, related_name="home_sections")
+    link = models.CharField(max_length=300, blank=True)
+    button_text = models.CharField(max_length=100, blank=True)
+    is_active = models.BooleanField(default=True)
+    position = models.PositiveIntegerField(default=0)
+    configuration = models.JSONField(default=dict, blank=True)
+    collection = models.ForeignKey(Collection, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return f"{self.get_section_type_display()}: {self.title or self.id}"
+
+
+class HomeSectionMedia(models.Model):
+    section = models.ForeignKey(HomeSection, on_delete=models.CASCADE, related_name="section_media")
+    media = models.ForeignKey(Media, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position"]
+
+
+class HomeSectionProduct(models.Model):
+    section = models.ForeignKey(HomeSection, on_delete=models.CASCADE, related_name="section_products")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position"]
+
+
+class HomeSectionCategory(models.Model):
+    section = models.ForeignKey(HomeSection, on_delete=models.CASCADE, related_name="section_categories")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position"]
+
+
 class Address(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
     full_name = models.CharField(max_length=160)

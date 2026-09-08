@@ -15,7 +15,6 @@ class CartLine {
   final int id; // Django CartItem ID
   final ProductModel product;
   final String variantName;
-  final String variantName;
   final int? variantId;
   int quantity;
 

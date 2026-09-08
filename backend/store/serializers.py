@@ -3,7 +3,8 @@ from django.urls import reverse
 from rest_framework import serializers
 from .models import (
     Address, Cart, CartItem, Category, Collection, 
-    ContactMessage, ContactMessageReply, Media, 
+    ContactMessage, ContactMessageReply, HomeSection, HomeSectionCategory, 
+    HomeSectionMedia, HomeSectionProduct, Media, 
     NewsletterSubscriber, Notification, Order, 
     OrderItem, Product, ProductMedia, ProductVariant, User
 )
@@ -16,6 +17,53 @@ def get_media_url(media, request):
     if request:
         return request.build_absolute_uri(url)
     return url
+
+
+class HomeSectionSerializer(serializers.ModelSerializer):
+    media_url = serializers.SerializerMethodField()
+    gallery = serializers.SerializerMethodField()
+    products = serializers.SerializerMethodField()
+    collection_detail = CollectionSerializer(source="collection", read_only=True)
+    categories = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HomeSection
+        fields = (
+            "id", "section_type", "title", "subtitle", "description", 
+            "media", "media_url", "link", "button_text", "is_active", 
+            "position", "configuration", "collection", "collection_detail",
+            "gallery", "products", "categories", "created_at", "updated_at"
+        )
+
+    def get_media_url(self, obj):
+        return get_media_url(obj.media, self.context.get("request"))
+
+    def get_gallery(self, obj):
+        request = self.context.get("request")
+        return [
+            {
+                "id": sm.media.id,
+                "url": get_media_url(sm.media, request),
+                "position": sm.position
+            }
+            for sm in obj.section_media.all().select_related("media")
+        ]
+
+    def get_products(self, obj):
+        request = self.context.get("request")
+        section_products = obj.section_products.all().select_related("product").prefetch_related("product__product_media__media", "product__variants")
+        return [
+            ProductSerializer(sp.product, context={"request": request}).data
+            for sp in section_products
+        ]
+
+    def get_categories(self, obj):
+        request = self.context.get("request")
+        section_categories = obj.section_categories.all().select_related("category__media")
+        return [
+            CategorySerializer(sc.category, context={"request": request}).data
+            for sc in section_categories
+        ]
 
 
 class UserSerializer(serializers.ModelSerializer):

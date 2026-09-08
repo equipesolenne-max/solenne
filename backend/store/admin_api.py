@@ -1,4 +1,5 @@
 from django.db.models import Sum, Count, Q
+from django.urls import reverse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
@@ -6,13 +7,14 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from .models import (
     Category, Collection, ContactMessage, ContactMessageReply, 
+    HomeSection, HomeSectionCategory, HomeSectionMedia, HomeSectionProduct, 
     Media, Notification, Order, OrderStatusHistory, 
     Product, ProductMedia, ProductVariant, StoreSettings, User
 )
 from .serializers import (
     CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
-    ContactMessageReplySerializer, NotificationSerializer, OrderSerializer, 
-    ProductMediaSerializer, ProductSerializer, UserSerializer, VariantSerializer
+    ContactMessageReplySerializer, HomeSectionSerializer, NotificationSerializer, 
+    OrderSerializer, ProductMediaSerializer, ProductSerializer, UserSerializer, VariantSerializer
 )
 from .email_service import notify_order_status, send_reply_notification
 
@@ -161,6 +163,65 @@ class AdminCollectionViewSet(viewsets.ModelViewSet):
             serializer.save(media=media)
         else:
             serializer.save()
+
+
+class AdminHomeSectionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    queryset = HomeSection.objects.prefetch_related(
+        "section_media__media",
+        "section_products__product",
+        "section_categories__category"
+    ).all()
+    serializer_class = HomeSectionSerializer
+
+    @action(detail=True, methods=["post"], url_path="items")
+    def update_items(self, request, pk=None):
+        section = self.get_object()
+        item_type = request.data.get("type")
+        item_ids = request.data.get("ids", [])
+        
+        if item_type == "product":
+            section.section_products.all().delete()
+            for idx, pid in enumerate(item_ids):
+                HomeSectionProduct.objects.create(section=section, product_id=pid, position=idx)
+        elif item_type == "category":
+            section.section_categories.all().delete()
+            for idx, cid in enumerate(item_ids):
+                HomeSectionCategory.objects.create(section=section, category_id=cid, position=idx)
+        elif item_type == "media":
+            section.section_media.all().delete()
+            for idx, mid in enumerate(item_ids):
+                HomeSectionMedia.objects.create(section=section, media_id=mid, position=idx)
+        
+        return Response(HomeSectionSerializer(section, context={"request": request}).data)
+
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        order_data = request.data.get("order", [])
+        for idx, sid in enumerate(order_data):
+            HomeSection.objects.filter(pk=sid).update(position=idx)
+        return Response({"status": "reordered"})
+
+
+class MediaViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser]
+    queryset = Media.objects.all()
+    serializer_class = serializers.Serializer # Minimal serializer for now
+
+    def create(self, request, *args, **kwargs):
+        uploaded = request.FILES.get("image")
+        if not uploaded:
+            return Response({"detail": "image is required."}, status=400)
+        media = Media.objects.create(
+            name=uploaded.name,
+            content=uploaded.read(),
+            content_type=uploaded.content_type
+        )
+        return Response({
+            "id": media.id,
+            "url": reverse("media", args=[media.id], request=request)
+        }, status=201)
 
 
 class AdminOrderViewSet(viewsets.ModelViewSet):
