@@ -12,7 +12,7 @@ from .models import Category, Product, ProductVariant, User
 class OrderFlowTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="buyer@example.com", password="strong-pass-123")
-        self.product = Product.objects.create(name="Silk", slug="silk", description="Soft silk", price=3500, stock=4, images=[])
+        self.product = Product.objects.create(name="Silk", slug="silk", description="Soft silk", price=3500, stock=4)
         self.variant = ProductVariant.objects.create(product=self.product, name="Ivory", stock=4)
         token = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
@@ -31,6 +31,7 @@ class OrderFlowTests(APITestCase):
     def test_idempotency_returns_same_order(self):
         payload = {"items": [{"product_id": self.product.id, "quantity": 1}], "shippingAddress": {"name": "Buyer", "phone": "0550123456", "wilaya": "Algiers", "commune": "Algiers", "address": "1 Main Street"}, "idempotencyKey": "same-key"}
         first = self.client.post("/api/orders/", payload, format="json")
+        self.assertEqual(first.status_code, 201, first.data)
         second = self.client.post("/api/orders/", payload, format="json")
         self.assertEqual(first.data["id"], second.data["id"])
         self.assertEqual(Product.objects.get(id=self.product.id).stock, 3)
@@ -75,4 +76,4 @@ class OrderFlowTests(APITestCase):
         image = SimpleUploadedFile("silk.png", image_buffer.getvalue(), content_type="image/png")
         response = self.client.post(f"/api/admin/products/{self.product.id}/images/", {"image": image}, format="multipart")
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(self.product.media_images.count(), 1)
+        self.assertEqual(self.product.product_media.count(), 1)
