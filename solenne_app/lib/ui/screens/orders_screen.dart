@@ -10,6 +10,7 @@ import '../../models/order_model.dart';
 import '../../services/order_repository.dart';
 import '../../state/auth_state.dart';
 import 'order_details_screen.dart';
+import '../../core/utils/url_utils.dart';
 
 /// Redesigned Orders page: editorial header, premium cards, status indicators,
 /// and smooth staggered animations.
@@ -196,10 +197,10 @@ class _OrderPreview extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: items.first.image.isNotEmpty
-          ? Image.network(
+          ? UrlUtils.buildImage(
               items.first.image,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(LucideIcons.package, size: 20, color: SolenneColors.line),
+              fallback: const Icon(LucideIcons.package, size: 20, color: SolenneColors.line),
             )
           : const Icon(LucideIcons.package, size: 20, color: SolenneColors.line),
     );

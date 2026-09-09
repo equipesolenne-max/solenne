@@ -12,14 +12,15 @@ from .models import (
     Address, Cart, CartItem, Category, Collection, 
     ContactMessage, ContactMessageReply, HomeSection, HomeSectionCategory, 
     HomeSectionMedia, HomeSectionProduct, Media, ProductMedia,
-    Notification, Order, Product, Wishlist, User
+    Notification, Order, Product, Wishlist, User, ShippingRate
 )
 from .serializers import (
     AddressSerializer, CartItemSerializer, CartSerializer, 
     CategorySerializer, CollectionSerializer, ContactMessageSerializer, 
     ContactMessageReplySerializer, HomeSectionSerializer, LoginSerializer,
     NewsletterSubscriberSerializer, NotificationSerializer, 
-    OrderSerializer, ProductSerializer, RegisterSerializer, UserSerializer
+    OrderSerializer, ProductSerializer, RegisterSerializer, UserSerializer,
+    ShippingRateSerializer
 )
 from .services import create_order
 
@@ -172,6 +173,12 @@ class CollectionViewSet(CatalogViewSet):
 class CategoryViewSet(CatalogViewSet):
     queryset = Category.objects.select_related("media").defer("media__content").all()
     serializer_class = CategorySerializer
+
+
+class ShippingRateViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = ShippingRate.objects.filter(is_active=True)
+    serializer_class = ShippingRateSerializer
 
 
 class AddressViewSet(viewsets.ModelViewSet):

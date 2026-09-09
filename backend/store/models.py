@@ -234,9 +234,30 @@ class Wishlist(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class ShippingRate(models.Model):
+    DELIVERY_TYPES = [
+        ("home_delivery", "Livraison à domicile"),
+        ("stop_desk", "Stop Desk"),
+    ]
+    wilaya_code = models.PositiveIntegerField(unique=True)
+    wilaya_name = models.CharField(max_length=100)
+    home_delivery_price = models.PositiveIntegerField()
+    stop_desk_price = models.PositiveIntegerField()
+    return_price = models.PositiveIntegerField(default=300)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["wilaya_code"]
+
+    def __str__(self):
+        return f"{self.wilaya_code} - {self.wilaya_name}"
+
+
 class Order(models.Model):
     STATUS = [(value, value) for value in ("pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned")]
     PAYMENT_STATUS = [(value, value) for value in ("pending", "paid", "refunded")]
+    DELIVERY_METHODS = [("home_delivery", "Domicile"), ("stop_desk", "Stop Desk")]
+
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="orders")
     order_number = models.CharField(max_length=32, unique=True)
     customer = models.CharField(max_length=160)
@@ -248,6 +269,7 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=80, default="Cash on delivery")
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default="pending")
     status = models.CharField(max_length=20, choices=STATUS, default="pending")
+    delivery_method = models.CharField(max_length=20, choices=DELIVERY_METHODS, default="home_delivery")
     shipping = models.JSONField(default=dict)
     legacy_id = models.CharField(max_length=128, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

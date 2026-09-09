@@ -1,6 +1,7 @@
 import 'product_model.dart';
 import 'category_model.dart';
 import 'collection_model.dart';
+import '../core/utils/url_utils.dart';
 
 class HomeSectionModel {
   final String id;
@@ -40,7 +41,7 @@ class HomeSectionModel {
       title: map['title'] ?? '',
       subtitle: map['subtitle'] ?? '',
       description: map['description'] ?? '',
-      mediaUrl: map['media_url'],
+      mediaUrl: map['media_url'] != null ? UrlUtils.sanitizeUrl(map['media_url'] as String) : null,
       link: map['link'],
       buttonText: map['button_text'],
       products: (map['products'] as List? ?? [])
@@ -50,7 +51,7 @@ class HomeSectionModel {
           .map((c) => CategoryModel.fromMap(c))
           .toList(),
       gallery: (map['gallery'] as List? ?? [])
-          .map((g) => g['url'].toString())
+          .map((g) => UrlUtils.sanitizeUrl(g['url']?.toString() ?? ''))
           .toList(),
       collection: map['collection_detail'] != null 
           ? CollectionModel.fromMap(map['collection_detail']) 

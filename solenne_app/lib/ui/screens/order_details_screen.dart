@@ -7,6 +7,7 @@ import '../components/solenne_loading.dart';
 import '../components/solenne_price.dart';
 import '../../models/order_model.dart';
 import '../../services/order_repository.dart';
+import '../../core/utils/url_utils.dart';
 
 /// Redesigned Order Details page: editorial layout, status tracker, item cards,
 /// and clear price breakdown.
@@ -208,7 +209,7 @@ class _OrderItemCard extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: item.image.isNotEmpty
-                ? Image.network(item.image, fit: BoxFit.cover)
+                ? UrlUtils.buildImage(item.image, fit: BoxFit.cover)
                 : const Icon(LucideIcons.package, size: 24, color: SolenneColors.line),
           ),
           const SizedBox(width: SolenneSpacing.md),

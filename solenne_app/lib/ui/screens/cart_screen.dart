@@ -7,6 +7,7 @@ import '../components/solenne_price.dart';
 import '../components/solenne_empty_state.dart';
 import '../components/solenne_loading.dart';
 import '../../state/cart_state.dart';
+import '../../core/utils/url_utils.dart';
 import 'checkout_screen.dart';
 import 'root_shell.dart';
 
@@ -61,7 +62,7 @@ class CartScreen extends StatelessWidget {
                                     border: Border.all(color: SolenneColors.line),
                                   ),
                                   child: line.product.images.isNotEmpty
-                                      ? Image.network(line.product.images.first, fit: BoxFit.cover)
+                                      ? UrlUtils.buildImage(line.product.images.first, fit: BoxFit.cover)
                                       : null,
                                 ),
                                 const SizedBox(width: SolenneSpacing.md),

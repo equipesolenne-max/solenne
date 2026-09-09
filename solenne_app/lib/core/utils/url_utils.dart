@@ -1,12 +1,23 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../config/constants.dart';
 
 class UrlUtils {
   /// Sanitizes URLs returned by the backend.
   /// Replaces 'localhost' with '10.0.2.2' if running on an Android emulator.
   static String sanitizeUrl(String url) {
     if (url.isEmpty) return url;
+
+    // Handle relative URLs from Django backend (e.g., /api/media/...)
+    if (url.startsWith('/api/')) {
+      try {
+        final baseUri = Uri.parse(Constants.apiBaseUrl);
+        url = '${baseUri.origin}$url';
+      } catch (e) {
+        debugPrint('Error resolving relative URL: $e');
+      }
+    }
     
     // If we're on Android and the URL contains localhost, swap it to 10.0.2.2
     if (!kIsWeb && Platform.isAndroid && url.contains('localhost')) {

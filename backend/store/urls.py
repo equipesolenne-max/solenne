@@ -4,7 +4,8 @@ from .views import (
     AddressViewSet, CartItemView, CartView, CategoryViewSet, 
     CollectionViewSet, MediaView, MyContactMessageViewSet, 
     NotificationViewSet, OrderViewSet, ProductViewSet, 
-    WishlistView, contact_view, home_view, newsletter_view
+    WishlistView, contact_view, home_view, newsletter_view,
+    ShippingRateViewSet
 )
 
 router = DefaultRouter()
@@ -15,6 +16,7 @@ router.register("addresses", AddressViewSet, basename="address")
 router.register("orders", OrderViewSet, basename="order")
 router.register("notifications", NotificationViewSet, basename="notification")
 router.register("contact-messages", MyContactMessageViewSet, basename="my-contact-message")
+router.register("shipping/rates", ShippingRateViewSet, basename="shipping-rate")
 
 urlpatterns = [
     # Explicit routes first to avoid router shadowing

@@ -121,3 +121,32 @@ class OrderFlowTests(APITestCase):
         self.assertEqual(media_response.status_code, 200)
         self.assertEqual(media_response["Content-Type"], "image/png")
         self.assertEqual(media_response.content, image_content)
+
+class ShippingTests(APITestCase):
+    def test_shipping_rates_population(self):
+        from .models import ShippingRate
+        self.assertEqual(ShippingRate.objects.count(), 27)
+        
+        boumerdes = ShippingRate.objects.get(wilaya_code=35)
+        self.assertEqual(boumerdes.home_delivery_price, 500)
+        self.assertEqual(boumerdes.stop_desk_price, 300)
+
+        alger = ShippingRate.objects.get(wilaya_code=16)
+        self.assertEqual(alger.home_delivery_price, 600)
+        
+        djanet = ShippingRate.objects.get(wilaya_code=56)
+        self.assertEqual(djanet.home_delivery_price, 2200)
+        self.assertEqual(djanet.stop_desk_price, 1600)
+
+    def test_calculate_shipping_logic(self):
+        from .services import calculate_shipping
+        # Boumerdes home
+        self.assertEqual(calculate_shipping(1000, "Boumerdès", "home_delivery"), 500)
+        # Alger stop desk
+        self.assertEqual(calculate_shipping(2000, "Alger", "stop_desk"), 400)
+        # Free shipping threshold
+        self.assertEqual(calculate_shipping(5000, "Djanet", "home_delivery"), 0)
+        # Case insensitivity
+        self.assertEqual(calculate_shipping(1000, "alger", "home_delivery"), 600)
+        # Fallback
+        self.assertEqual(calculate_shipping(1000, "Nonexistent", "home_delivery"), 1000)

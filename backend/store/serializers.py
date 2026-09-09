@@ -6,7 +6,7 @@ from .models import (
     ContactMessage, ContactMessageReply, HomeSection, HomeSectionCategory, 
     HomeSectionMedia, HomeSectionProduct, Media, 
     NewsletterSubscriber, Notification, Order, 
-    OrderItem, Product, ProductMedia, ProductVariant, User
+    OrderItem, Product, ProductMedia, ProductVariant, User, ShippingRate
 )
 
 
@@ -223,6 +223,12 @@ class HomeSectionSerializer(serializers.ModelSerializer):
         ]
 
 
+class ShippingRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShippingRate
+        fields = ("wilaya_code", "wilaya_name", "home_delivery_price", "stop_desk_price", "return_price", "is_active")
+
+
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
@@ -257,6 +263,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     date = serializers.SerializerMethodField()
+    delivery_method_display = serializers.CharField(source="get_delivery_method_display", read_only=True)
 
     class Meta:
         model = Order
@@ -264,6 +271,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "id", "order_number", "customer", "email", "phone", 
             "date", "subtotal", "shipping_cost", "total", 
             "payment_method", "payment_status", "status", 
+            "delivery_method", "delivery_method_display",
             "shipping", "items", "created_at", "updated_at"
         )
 

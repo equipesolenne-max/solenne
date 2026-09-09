@@ -1,10 +1,28 @@
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-from .models import IdempotencyKey, Notification, Order, OrderItem, OrderStatusHistory, Product, ProductVariant, User
+from .models import IdempotencyKey, Notification, Order, OrderItem, OrderStatusHistory, Product, ProductVariant, User, ShippingRate
 from .email_service import send_order_confirmation
 
 SHIPPING_THRESHOLD = 5000
-SHIPPING_COST = 1000
+
+def calculate_shipping(subtotal, wilaya_name, delivery_method):
+    if subtotal >= SHIPPING_THRESHOLD:
+        return 0
+    
+    try:
+        # Match by name (case-insensitive and ignoring common prefixes if needed, but here we expect exact match or near it)
+        # Better to match by code if frontend sends it, but if it sends name:
+        rate = ShippingRate.objects.filter(wilaya_name__iexact=wilaya_name, is_active=True).first()
+        if not rate:
+            # Fallback if name is slightly different (e.g. "Algiers" vs "Alger")
+            # This logic can be improved.
+            return 1000 # Standard fallback
+        
+        if delivery_method == 'stop_desk':
+            return rate.stop_desk_price
+        return rate.home_delivery_price
+    except Exception:
+        return 1000
 
 
 def create_order(*, user: User, items: list[dict], shipping: dict, payment_method: str, idempotency_key: str) -> Order:
@@ -66,7 +84,10 @@ def create_order(*, user: User, items: list[dict], shipping: dict, payment_metho
             subtotal += line_total
             resolved.append((product, variant, color, size, quantity, price, line_total))
         
-        shipping_cost = 0 if subtotal >= SHIPPING_THRESHOLD else SHIPPING_COST
+        wilaya = shipping.get("wilaya", "")
+        delivery_method = shipping.get("deliveryMethod", "home_delivery")
+        shipping_cost = calculate_shipping(subtotal, wilaya, delivery_method)
+        
         order = Order.objects.create(
             user=user, 
             order_number=f"SOL-{str(Order.objects.count() + 1).zfill(6)}", 
@@ -77,7 +98,8 @@ def create_order(*, user: User, items: list[dict], shipping: dict, payment_metho
             shipping_cost=shipping_cost, 
             total=subtotal + shipping_cost, 
             payment_method=payment_method or "Cash on delivery", 
-            shipping={"wilaya": shipping.get("wilaya", ""), "commune": shipping.get("commune", ""), "address": shipping.get("address", "")}
+            delivery_method=delivery_method,
+            shipping={"wilaya": wilaya, "commune": shipping.get("commune", ""), "address": shipping.get("address", "")}
         )
         
         for product, variant, color, size, quantity, price, line_total in resolved:

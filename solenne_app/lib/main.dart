@@ -12,6 +12,7 @@ import 'services/address_repository.dart';
 import 'services/notification_repository.dart';
 import 'services/inquiry_repository.dart';
 import 'services/home_repository.dart';
+import 'services/shipping_repository.dart';
 import 'state/auth_state.dart';
 import 'state/cart_state.dart';
 import 'state/wishlist_state.dart';
@@ -37,6 +38,7 @@ Future<void> main() async {
         Provider<NotificationRepository>(create: (_) => NotificationRepository(apiClient)),
         Provider<InquiryRepository>(create: (_) => InquiryRepository(apiClient)),
         Provider<HomeRepository>(create: (_) => HomeRepository(apiClient)),
+        Provider<ShippingRepository>(create: (_) => ShippingRepository(apiClient)),
         ChangeNotifierProvider<AuthState>(
           create: (context) => AuthState(context.read<AuthService>()),
         ),
