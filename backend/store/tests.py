@@ -50,8 +50,43 @@ class OrderFlowTests(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
         self.assertEqual(self.client.get("/api/admin/dashboard/").status_code, 200)
         category = Category.objects.create(name="Silks", slug="silks")
-        response = self.client.post("/api/admin/products/", {"name": "New Silk", "slug": "new-silk", "description": "Drape", "price": 2000, "category_id": category.id}, format="json")
+        
+        # Test creation with variants
+        payload = {
+            "name": "New Silk", 
+            "slug": "new-silk", 
+            "description": "Drape", 
+            "price": 2000, 
+            "category_id": category.id,
+            "variants": [
+                {"name": "Midnight Blue", "hex": "#1B2A46", "stock": 10},
+                {"name": "Ivory", "hex": "#F8F4EC", "stock": 5}
+            ]
+        }
+        response = self.client.post("/api/admin/products/", payload, format="json")
         self.assertEqual(response.status_code, 201)
+        product_id = response.data["id"]
+        product = Product.objects.get(id=product_id)
+        self.assertEqual(product.variants.count(), 2)
+        self.assertTrue(product.variants.filter(name="Midnight Blue").exists())
+        self.assertTrue(product.variants.filter(name="Ivory").exists())
+
+        # Test update (add one, modify one, delete one)
+        v1_id = product.variants.get(name="Midnight Blue").id
+        update_payload = {
+            "name": "Updated Silk",
+            "variants": [
+                {"id": v1_id, "name": "Midnight Blue", "hex": "#1B2A46", "stock": 12}, # modified stock
+                {"name": "Beige", "hex": "#DCD0BB", "stock": 8} # new
+                # Ivory removed
+            ]
+        }
+        response = self.client.patch(f"/api/admin/products/{product_id}/", update_payload, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(product.variants.count(), 2)
+        self.assertEqual(product.variants.get(id=v1_id).stock, 12)
+        self.assertTrue(product.variants.filter(name="Beige").exists())
+        self.assertFalse(product.variants.filter(name="Ivory").exists())
 
     def test_admin_can_manage_category_and_collection(self):
         admin = User.objects.create_superuser(email="admin2@example.com", password="strong-pass-123")

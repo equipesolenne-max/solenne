@@ -61,6 +61,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class VariantSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
     images = serializers.SerializerMethodField()
 
     class Meta:

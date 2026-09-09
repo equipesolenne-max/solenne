@@ -48,7 +48,7 @@ function payload(resource: string, value: object) {
     is_new: item.is_new,
     category_id: item.category_id,
     collection_id: item.collection_id,
-    variants: undefined,
+    variants: item.variants,
     colors: undefined,
     created_at: undefined
   };
